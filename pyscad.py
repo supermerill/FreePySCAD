@@ -49,20 +49,6 @@ def getColorCode(str):
 	if(str == "olive"):		return (0.5,0.5,0.0,0.0)
 	return (0.5,0.5,0.5,0.5)
 	
-# def getTuple3(default, *params):
-	# if len(params) == 0 :
-		# return (default,default,default)
-	# if len(params)==1 and isinstance(params[0], list) :
-			# return (float(params[0][0]) if len(params[0])>0 else default, float(params[0][1]) if len(params[0])>1 else default, float(params[0][2]) if len(params[0])>2 else default)
-	# return ( float(params[0]) if len(params)>0 else default, float(params[1]) if len(params)>1 else default, float(params[2]) if len(params)>2 else default )
-
-# def getTuple4(default, *params):
-	# if len(params) == 0 :
-		# return (default,default,default,default)
-	# if len(params)==1 and isinstance(params[0], list) :
-			# return (float(params[0][0]) if len(params[0])>0 else default, float(params[0][1]) if len(params[0])>1 else default, float(params[0][2]) if len(params[0])>2 else default, float(params[0][3]) if len(params[0])>3 else default)
-	# return ( float(params[0]) if len(params)>0 else default, float(params[1]) if len(params)>1 else default, float(params[2]) if len(params)>2 else default, float(params[3]) if len(params)>3 else default )
-
 def getTuple2(a,b,default_first_item):
 	if(isinstance(a, list)):
 		if(len(a)==0):
@@ -125,6 +111,16 @@ if(not 'tree_storage' in globals()):
 class Scene:
 	def __init__(self):
 		doc = FreeCAD.ActiveDocument
+	#when draw() don't refresh correctly
+	def redraw(self, *tupleOfNodes):
+		for obj in FreeCAD.ActiveDocument.Objects :
+			FreeCAD.ActiveDocument.removeObject(obj.Name)
+			
+		for node in tupleOfNodes:
+			node.create()
+		global tree_storage
+		tree_storage[FreeCAD.ActiveDocument] = tupleOfNodes
+		FreeCAD.ActiveDocument.recompute()
 	def draw(self, *tupleOfNodes):
 		global tree_storage
 		try:
@@ -1442,64 +1438,63 @@ class ApplyNodeFunc():
 		return self(chamfer(name))
 	def fillet(self,name=None):
 		return self(fillet(name))
-	def mirror(x=0.0,y=0.0,z=0.0,name=None):
+	def mirror(self,x=0.0,y=0.0,z=0.0,name=None):
 		return self(mirror(x,y,z,name))
 	def offset(self,length=0.0,fillet=True,fusion=True,name=None):
 		return self(offset(length=length,fillet=fillet,fusion=fusion,name=name))
-	def offset2D(self,length=0.0,fillet=True,fusion=True,name):
+	def offset2D(self,length=0.0,fillet=True,fusion=True,name=None):
 		return self(offset2D(length=length,fillet=fillet,fusion=fusion,name=name))
-	def cube(size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None):
+	def cube(self,size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None):
 		return self(cube(size,y,z,center,x, name))
-	def box(x=1.0,y=1.0,z=1.0,center=None, name=None):
+	def box(self,x=1.0,y=1.0,z=1.0,center=None, name=None):
 		return self(box(x,y,z,center, name))
-	def tri_rect(x=1.0,y=1.0,z=1.0,center=None, name=None):
+	def tri_rect(self,x=1.0,y=1.0,z=1.0,center=None, name=None):
 		return self(tri_rect(x,y,z,center, name))
-	def cylinder(r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
+	def cylinder(self,r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
 		return self(cylinder(r,h,center,d,r1,r2,d1,d2,angle,fn,name))
-	def cone(r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None):
+	def cone(self,r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None):
 		return self(cone(r1,r2,h,center,d1,d2,fn,name))
-	def sphere(r=1.0,center=None,d=0.0,fn=1,name=None):
+	def sphere(self,r=1.0,center=None,d=0.0,fn=1,name=None):
 		return self(sphere(r,center,d,fn,name))
-	def torus(r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
+	def torus(self,r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
 		return self(torus(r1, r2,center,d1,d2,name))
-	def poly_ext(r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
+	def poly_ext(self,r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
 		return self(poly_ext(r, nb, h,center,d,name))
-	def createPolyExt(node, r,nb,h,center):
+	def createPolyExt(self,node, r,nb,h,center):
 		return self(createPolyExt(node, r,nb,h,center))
-	def poly_int(a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
+	def poly_int(self,a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
 		return self(poly_int(a, nb, h,center,d,name))
-# def rotate2D(self, x=0.0,y=0.0):
-	def circle(r=1.0,center=None,d=0.0,fn=1,name=None):
+	def circle(self,r=1.0,center=None,d=0.0,fn=1,name=None):
 		return self(circle(r,center,d,fn,name))
-	def ellipse(r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):
+	def ellipse(self,r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):
 		return self(ellipse(r1,r2,center,d1,d2,name))
-	def poly_reg(r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None):
+	def poly_reg(self,r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None):
 		return self(poly_reg(r,nb,center,inscr,d,name))
-	def square(size=1.0,y=0.0,x=0.0,center=None,name=None):
+	def square(self,size=1.0,y=0.0,x=0.0,center=None,name=None):
 		return self(square(size,y,x,center,name))
-	def rectangle(x=1.0,y=1.0,center=None,name=None):
+	def rectangle(self,x=1.0,y=1.0,center=None,name=None):
 		return self(rectangle(x,y,center,name))
-	def polygon(points=[], closed=True,name=None):
+	def polygon(self,points=[], closed=True,name=None):
 		return self(polygon(points, closed,name))
-	def bspline(points=[], closed=False,name=None):
+	def bspline(self,points=[], closed=False,name=None):
 		return self(bspline(points, closed,name))
-	def bezier(points=[], closed=False,name=None):
+	def bezier(self,points=[], closed=False,name=None):
 		return self(bezier(points, closed,name))
-	def helix(r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None):
+	def helix(self,r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None):
 		return self(helix(r,p,h,center,d,name))
-	def gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=None):
+	def gear(self,nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=None):
 		return self(gear(nb, mod, angle, external, high_precision,name))
-	def line(p1=[0.0,0.0,0.0],p2=[1.0,1.0,1.0],center=None,name=None):
+	def line(self,p1=[0.0,0.0,0.0],p2=[1.0,1.0,1.0],center=None,name=None):
 		return self(line(p1,p2,center,name))
-	def text(text="Hello", size=1.0, font="arial.ttf",center=None,name=None):
+	def text(self,text="Hello", size=1.0, font="arial.ttf",center=None,name=None):
 		return self(text(text, size, font,center,name))
-	def z_extrude(length=1.0, angle=0.0):
+	def z_extrude(self,length=1.0, angle=0.0):
 		return self(z_extrude(length, angle))
-	def linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
+	def linear_extrude(self,x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
 		return self(linear_extrude(x,y,z, angle,name))
-	def rotate_extrude(angle=360.0,name=None):
+	def rotate_extrude(self,angle=360.0,name=None):
 		return self(rotate_extrude(angle,name))
-	def path_extrude(frenet=True, transition = "Right corner",name=None):
+	def path_extrude(self,frenet=True, transition = "Right corner",name=None):
 		return self(path_extrude(frenet,transition,name))
 	
 def translate(x=0.0,y=0.0,z=0.0):

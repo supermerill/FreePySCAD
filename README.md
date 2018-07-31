@@ -10,18 +10,18 @@ To install the library, clone the github repository into the "Freecad X.xx/mod" 
 To write your code, you can open the freecad macro editor and begining your macro with "from Pyscad.pyscad import *"   
 You can also type in the python console "execfile('path_to/my_pycad.py')", this has the advantage to show the errors.
 ## what's different
-The braces are replaced with parenthesis
-The ';' are replaced with ',' and you also have to place it after ')' if no other ')' are directly after that to respect the python syntax.
-You can't let the modifiers like translate, rotate.. be unattached: use the parenthesis or a dot (see example)
+The braces are replaced with parenthesis  
+The ';' are replaced with ',' and you also have to place it after ')' if no other ')' are directly after that to respect the python syntax.  
+You can't let the modifiers like translate, rotate... be unattached: use the parenthesis or a dot (see below)
 
     openscad: difference(){ translate([1,1,0]) cube(2); rotate([0,0,45]) cube(2); }
     pyscad:   difference()( translate([1,1,0]).cube(2), rotate([0,0,45])(cube(2)),)
-minkowski and hull aren't coded. 
-minkowski can be replaced by offset for the most simple case (shpere)
+minkowski and hull aren't coded.  
+minkowski can be replaced by offset() for the most simple case (sphere)
 
-You can also wrote a more concise code with Pyscad if you want (i was tired of writing "translate([])" over an over)
+You can also wrote a more concise code with Pyscad if you want (i was tired of writing "translate([ ])" over an over)
 
-    cut()( move(1,1).cube(2), cube(2).rotate(0,0,45) , rotate(z=30)(cube(2)) )
+    cut()( move(1,1).cube(2), cube(2).rotate(0,0,60) , rotate(z=30)(cube(2)) )
 
 You can now use functions with real variables that can be changed!
 
@@ -104,6 +104,7 @@ This function do the work of recreating only the node that need a redraw and don
 * cut()(...3D) / difference()(...3D)  
 
 #### Other:
+* scene().draw(...3D) / scene().redraw(...3D) #redraw() erase everything in the document before rebuilding the object tree. Draw() try to update when possible and don't erase everything.
 * importSvg(filepath,ids) #ids is an optional array of index to say which one have to be imported
 * importStl(filepath,ids) 
 
@@ -115,3 +116,6 @@ All python language and standard library
 * center: on almost every object, you can set as parameter, center=True or center=center_x, center=center_yz, ...
 	you can also use the transformation .center() or .x(), .yz(), ....
 * name: on almost everything, you can set the name parameter to whatever you want, it will be shown in the FreeCAD object hierarchy.
+* the notation move(2).box(1) should be used only whne it's very convenient, It's here to make conversion from openscad to pyscad more easy, but It can led to strange behavior, see the two points below.
+* Order of execution: move(6)(move(3).move(2).cube(1).move(4).move(5)) => it's ugly, don't do that.
+* the move(2).box(1) work but you cannot do move(1).myfunc() because myfunc isn't in the list of function that is available to the "move object". In this case, you have to use move(1)(myfunc()) or myfunc().move(1)
