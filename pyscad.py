@@ -3,6 +3,7 @@
 # This file is made by supermerill (Remi Durand)        #
 #########################################################
 
+######################################
 # print("You can use something like 'from ", __name__," import *' for a more convenient experience")
 #
 # usage: scene().show( many statement )
@@ -21,11 +22,10 @@
 #  passed to the leafs.
 #
 # more info on the github wiki
-#
-#execfile("C:/Users/remi/Documents/test_freecad.py")
-import Part, FreeCAD, math, Draft, InvoluteGearFeature
+######################################
+
+import Part, FreeCAD, math, Draft, InvoluteGearFeature, importSVG, Mesh
 from FreeCAD import Base
-# import freecad_remilib
 
 ######### basic functions #########
 def getColorCode(str):
@@ -117,11 +117,6 @@ def getTuple4Abs(a,b,c,d,default_first_item):
 	return (abs(a),abs(b),abs(c),abs(d))
 	
 ######### scene class #########
-#TODO: instead of removing everythign and re-adding them,
-#	I should parse the tree and set the properties, and when the tree structure change, modify it 
-# (or scrap/replace only from the modified point)
-
-#
 
 if(not 'tree_storage' in globals()):
 	global tree_storage
@@ -130,63 +125,26 @@ if(not 'tree_storage' in globals()):
 class Scene:
 	def __init__(self):
 		doc = FreeCAD.ActiveDocument
-		# print(doc.Objects)
-		# for obj in doc.Objects :
-			# doc.removeObject(obj.Name)
-		# # sg.removeAllChildren();
-		# print(doc.Objects)
-		# Gui.ActiveDocument.ActiveView.setAxisCross(False)
-		# Gui.ActiveDocument.ActiveView.setAxisCross(True)
-	def draw(self, *arrayOfNodes):
+	def draw(self, *tupleOfNodes):
 		global tree_storage
 		try:
 			if(not FreeCAD.ActiveDocument in tree_storage):
 				tree_storage[FreeCAD.ActiveDocument] = []
 			keep_nodes = []
 			i=0
-			# for new_node in arrayOfNodes:
-				# arrayOfNodes[i].check(tree_storage[FreeCAD.ActiveDocument][0])
-			# for new_node in arrayOfNodes:
-				# new_hash = hash(new_node)
-				# # print("hash of "+new_node.name+" = ",new_hash)
-				# ok = False
-				# for old_node in tree_storage[FreeCAD.ActiveDocument]:
-					# old_hash = hash(old_node)
-					# # print("hash of "+new_node.name+" = ",old_hash)
-					# if(new_hash == old_hash):
-						# ok = True
-						# print("find!")
-						# keep_nodes.append(old_node)
-						# break;
-				# if(not ok):
-					# print("create_new")
-					# new_node.create()
 			doc = FreeCAD.ActiveDocument
-			for new_node in arrayOfNodes:
-				print("look at root "+new_node.name)
-				ok = False
-				# print(new_node)
-				# print(hash(new_node))
-				for old_node in tree_storage[FreeCAD.ActiveDocument]:
-					# print(old_node)
-					# print(hash(old_node))
-					if(hash(new_node) == hash(old_node)):
-						ok = True
-						print("find the same old "+new_node.name)
-						new_node.check(doc, old_node)
-						keep_nodes.append(old_node)
-						break;
-				if(not ok):
-					print("create_new")
-					new_node.create()
-			for old_node in tree_storage[FreeCAD.ActiveDocument]:
-				ok = False
-				for knode in keep_nodes:
-					if(knode == old_node):
-						ok = True
-						break;
-				if(not ok):
-					old_node.destroyObj(doc)
+			newArrayOfNodes = []
+			# This algo can't support a shuffle (or insert) of new object in the root.
+			# But it works
+			for node_idx in range(len(tupleOfNodes)):
+				if(len(tree_storage[FreeCAD.ActiveDocument])<=node_idx):
+					newArrayOfNodes.append(tupleOfNodes[node_idx].create())
+				else:
+					newArrayOfNodes.append(tupleOfNodes[node_idx].check(doc, tree_storage[FreeCAD.ActiveDocument][node_idx]))
+				node_idx+=1
+			if(len(tree_storage[FreeCAD.ActiveDocument])>len(tupleOfNodes)):
+				for node_idx in range(len(tupleOfNodes), len(tree_storage[FreeCAD.ActiveDocument])):
+					tree_storage[FreeCAD.ActiveDocument][node_idx].destroyObj(doc)
 		except:
 			print("Unexpected error:")
 		# if True:
@@ -195,11 +153,11 @@ class Scene:
 				doc.removeObject(obj.Name)
 			FreeCAD.ActiveDocument.recompute()
 			raise
-		tree_storage[FreeCAD.ActiveDocument] = arrayOfNodes
+		tree_storage[FreeCAD.ActiveDocument] = tuple(newArrayOfNodes)
 		FreeCAD.ActiveDocument.recompute()
 		return self;
-	def __call__(self, *arrayOfNodes):
-		return self.draw(*arrayOfNodes)
+	def __call__(self, *tupleOfNodes):
+		return self.draw(*tupleOfNodes)
 
 def scene():
 	return Scene()
@@ -217,6 +175,13 @@ class EasyNode:
 	def addAction(self, method, args):
 		self.actions.append((method,args))
 	def __hash__(self):
+		if(hasattr(self, '_hash')):
+			if(self._hash):
+				return 0
+			else:
+				self._hash = True
+		else:
+			self._hash = True
 		hashval = 0
 		i=0
 		for action in self.actions:
@@ -224,7 +189,7 @@ class EasyNode:
 			hashval = hashval + (hash(action[0].__name__))
 			i+=517
 			for arg in action[1]:
-				if(isinstance(arg, EasyNode) or isinstance(arg, tuple)):
+				if(isinstance(arg, EasyNode) or isinstance(arg, tuple) or isinstance(arg, list)):
 					temp = 0
 				else:
 					temp = (hash(arg)*i)
@@ -269,6 +234,7 @@ class EasyNode:
 			action[0](*action[1])
 		for action in self.actions_after :
 			action[0](*action[1])
+		return self
 	def destroyObj(self, doc):
 		if(hasattr(self,'obj')):
 			print("destroy "+self.obj.Name)
@@ -280,6 +246,9 @@ class EasyNode:
 		print("check "+self.name)
 		ok = True
 		if(self.simple):
+			#must be done before, to update things?
+			hash(self)
+			hash(clone)
 			if(hash(self) == hash(clone) and len(self.childs) == len(clone.childs)):
 				i=0
 				for item in self.childs:
@@ -296,7 +265,7 @@ class EasyNode:
 				# clone.printhash();
 			else:
 				ok = False
-				print("simple but hash: ",hash(self)," != ",hash(clone)," or ",len(self.childs)," != ",len(clone.childs))
+				print("simple but hash: ",hash(self)," != ",hash(clone),hash(self)==hash(clone)," or ",len(self.childs)," != ",len(clone.childs),len(self.childs)==len(clone.childs))
 		else:
 			ok = (self.hashWhithChilds() == clone.hashWhithChilds())
 			print("it's complicated ",ok)
@@ -325,26 +294,26 @@ class EasyNode:
 			self.create()
 			return self
 
-	def add(self, *arrayOfNodes):
-		if(len(arrayOfNodes)==1 and (isinstance(arrayOfNodes[0], list) or isinstance(arrayOfNodes[0], tuple))):
-			arrayOfNodes = tuple(arrayOfNodes[0])
-		for enode in arrayOfNodes :
+	def add(self, *tupleOfNodes):
+		if(len(tupleOfNodes)==1 and (isinstance(tupleOfNodes[0], list) or isinstance(tupleOfNodes[0], tuple))):
+			tupleOfNodes = tuple(tupleOfNodes[0])
+		for enode in tupleOfNodes :
 			if(isinstance(enode, EasyNode)):
 				self.childs.append(enode)
 			else:
 				print("error, trying to add '"+str(enode)+"' into a union of EsayNode")
-		self.actions.append((self.create_childs,arrayOfNodes))
-		self.actions.append((self.layout_childs,arrayOfNodes))
+		self.actions.append((self.create_childs,tupleOfNodes))
+		self.actions.append((self.layout_childs,tupleOfNodes))
 		return self
-	def __call__(self, *arrayOfNodes):
-		return self.add(*arrayOfNodes)
-	def create_childs(self, *arrayOfNodes):
-		for enode in arrayOfNodes :
+	def __call__(self, *tupleOfNodes):
+		return self.add(*tupleOfNodes)
+	def create_childs(self, *tupleOfNodes):
+		for enode in tupleOfNodes :
 			if(isinstance(enode, EasyNode)):
 				enode.create()
-	def layout_childs(self, *arrayOfNodes):
+	def layout_childs(self, *tupleOfNodes):
 		arrayShape = self.obj.Shapes
-		for enode in arrayOfNodes :
+		for enode in tupleOfNodes :
 			if(isinstance(enode, EasyNode)):
 				arrayShape.append(enode.obj)
 				enode.obj.ViewObject.Visibility = False
@@ -352,7 +321,7 @@ class EasyNode:
 				print("error, trying to layout '"+str(enode)+"' into a union of EsayNode")
 		self.obj.Shapes = arrayShape
 		return self
-	def clear_childs(self, *arrayOfNodes):
+	def clear_childs(self, *tupleOfNodes):
 		self.obj.Shapes = []
 		return self
 	# def printmyargs(self, *args):
@@ -538,13 +507,13 @@ class EasyNodeDiff(EasyNode):
 		self.actions = []
 		self.actions_after = []
 		self.simple = True
-	def add(self, *arrayOfNodes):
-		if(len(arrayOfNodes)==1 and (isinstance(arrayOfNodes[0], list) or isinstance(arrayOfNodes[0], tuple))):
-			arrayOfNodes = tuple(arrayOfNodes[0])
+	def add(self, *tupleOfNodes):
+		if(len(tupleOfNodes)==1 and (isinstance(tupleOfNodes[0], list) or isinstance(tupleOfNodes[0], tuple))):
+			tupleOfNodes = tuple(tupleOfNodes[0])
 		good_array = []
 		minidx = 0
 		newunion = False
-		for enode in arrayOfNodes :
+		for enode in tupleOfNodes :
 			if(isinstance(enode, EasyNode)):
 				good_array.append(enode)
 		if(len(good_array)==0):
@@ -587,18 +556,18 @@ class EasyNodeDiff(EasyNode):
 			self.actions.append((self.create_childs,tuple(good_array)))
 		self.actions.append((self.layout_childs,tuple(good_array)))
 		return self
-	def layout_childs(self, *arrayOfNodes):
-		if(self.obj.Base == None and len(arrayOfNodes)>0):
-			self.obj.Base = arrayOfNodes[0].obj
-			arrayOfNodes[0].obj.ViewObject.Visibility = False
-			arrayOfNodes = arrayOfNodes[1:]
-		if(self.my_union == None and self.obj.Tool == None and len(arrayOfNodes)>0):
-			self.obj.Tool = arrayOfNodes[0].obj
-			arrayOfNodes[0].obj.ViewObject.Visibility = False
-			arrayOfNodes = arrayOfNodes[1:]
-		if(self.my_union != None and len(arrayOfNodes)>0):
+	def layout_childs(self, *tupleOfNodes):
+		if(self.obj.Base == None and len(tupleOfNodes)>0):
+			self.obj.Base = tupleOfNodes[0].obj
+			tupleOfNodes[0].obj.ViewObject.Visibility = False
+			tupleOfNodes = tupleOfNodes[1:]
+		if(self.my_union == None and self.obj.Tool == None and len(tupleOfNodes)>0):
+			self.obj.Tool = tupleOfNodes[0].obj
+			tupleOfNodes[0].obj.ViewObject.Visibility = False
+			tupleOfNodes = tupleOfNodes[1:]
+		if(self.my_union != None and len(tupleOfNodes)>0):
 			self.obj.Tool = self.my_union.obj
-			self.my_union.layout_childs(*arrayOfNodes)
+			self.my_union.layout_childs(*tupleOfNodes)
 		return self
 
 def cut(name=None):
@@ -626,10 +595,14 @@ class EasyNodeChamfer(EasyNode):
 		self.actions = []
 		self.actions_after = []
 		self.simple = True
-	def layout_childs(self, *arrayOfNodes):
-		if(len(arrayOfNodes)>0):
-			self.obj.Base = arrayOfNodes[0]
+	def layout_childs(self, *tupleOfNodes):
+		if(len(tupleOfNodes)>0):
+			self.obj.Base = tupleOfNodes[0].obj
 			self.obj.Base.ViewObject.Visibility = False
+			self.obj.Edges = self.edges
+		return self
+	def set(self, node):
+		self.add(node)
 		return self
 	def addEdge(self, length, *arrayOfEdges):
 		if isinstance(length, list):
@@ -643,13 +616,13 @@ class EasyNodeChamfer(EasyNode):
 	def addEdge2(self, startLength, endLength, *arrayOfEdges):
 		for eidx in arrayOfEdges :
 			self.edges.append((eidx, startLength, endLength))
-		self.obj.Edges = self.edges
+		# self.obj.Edges = self.edges
 		return self
 	def setNb(self, length, nb, node):
 		self.set(node)
 		for eidx in range(1, nb+1) :
 			self.edges.append((eidx, length, length))
-		self.obj.Edges = self.edges
+		# self.obj.Edges = self.edges
 		return self
 
 def chamfer(name=None):
@@ -660,9 +633,9 @@ def chamfer(name=None):
 		node.name = "chamfer_"+str(_idx_EasyNode)
 	else:
 		node.name = name
-	def createChamfer(node, *nodes):
+	def createChamfer(node):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Chamfer", node.name)
-	node.addAction(createChamfer, (node, nodes))
+	node.addAction(createChamfer, (node,))
 	return node
 
 def fillet(name=None):
@@ -673,9 +646,9 @@ def fillet(name=None):
 		node.name = "fillet_"+str(_idx_EasyNode)
 	else:
 		node.name = name
-	def createFillet(node, *nodes):
+	def createFillet(node):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Fillet", node.name)
-	node.addAction(createFillet, (node, nodes))
+	node.addAction(createFillet, (node,))
 	return node
 
 class EasyNodeMirror(EasyNodeColored):
@@ -685,9 +658,9 @@ class EasyNodeMirror(EasyNodeColored):
 		self.actions = []
 		self.actions_after = []
 		self.simple = True
-	def layout_childs(self, *arrayOfNodes):
-		if(len(arrayOfNodes)>0):
-			self.obj.Source = arrayOfNodes[0].obj
+	def layout_childs(self, *tupleOfNodes):
+		if(len(tupleOfNodes)>0):
+			self.obj.Source = tupleOfNodes[0].obj
 			self.obj.Source.ViewObject.Visibility = False
 		return self
 
@@ -1258,6 +1231,7 @@ def gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=Non
 
 ######### Extrusion (2D to 3D) #########
 
+#todo: like cut, unionize auto
 class EasyNodeLinear(EasyNodeColored):
 	def __init__(self):
 		self.edges = [];
@@ -1265,17 +1239,14 @@ class EasyNodeLinear(EasyNodeColored):
 		self.actions = []
 		self.actions_after = []
 		self.simple = True
-	def add(self, *arrayOfNodes):
-		if len(arrayOfNodes) == 1 : 
-			self.set(arrayOfNodes[0])
-		return self
-	def set(self, node):
-		self.childs.append(node)
-		self.obj.Base = node.obj
-		self.obj.Base.ViewObject.Visibility = False
+	def layout_childs(self, *tupleOfNodes):
+		if(len(tupleOfNodes)>=1):
+			print("extrude "+tupleOfNodes[0].name)
+			self.obj.Base = tupleOfNodes[0].obj
+			self.obj.Base.ViewObject.Visibility = False
 		return self
 
-def z_extrude(length=1.0, angle=0.0):
+def z_extrude(length=1.0, angle=0.0,name=None):
 	print(str(length)+" -> "+str(angle))
 	global _idx_EasyNode
 	node = EasyNodeLinear()
@@ -1314,20 +1285,17 @@ def linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
 	node.addAction(createExtrude, (node, x,y,z,angle))
 	return node
 	
+#todo: like cut, unionize auto
 class EasyNodeRotateExtrude(EasyNodeColored):
-	def __init__(self):
-		self.childs = []
-		self.actions = []
-		self.actions_after = []
-		self.simple = True
-	def add(self, *arrayOfNodes):
-		if len(arrayOfNodes) == 1 : 
-			self.set(arrayOfNodes[0])
-		return self
-	def set(self, node):
-		self.childs.append(node)
-		self.obj.Source = node.obj
-		self.obj.Source.ViewObject.Visibility = False
+	# def __init__(self):
+		# self.childs = []
+		# self.actions = []
+		# self.actions_after = []
+		# self.simple = True
+	def layout_childs(self, *tupleOfNodes):
+		if(len(tupleOfNodes)>=1):
+			self.obj.Source = tupleOfNodes[0].obj
+			self.obj.Source.ViewObject.Visibility = False
 		return self
 
 def rotate_extrude(angle=360.0,name=None):
@@ -1351,32 +1319,19 @@ def rotate_extrude(angle=360.0,name=None):
 	node.addAction(createRExtrude, (node, angle))
 	return node
 
+#todo: like cut, unionize auto
 class EasyNodeSweep(EasyNode):
-	def add(self, *arrayOfNodes):
-		# if len(arrayOfNodes) == 2 : 
-			# self.childs.append(arrayOfNodes[0])
-			# self.childs.append(arrayOfNodes[1])
-			# self.obj.Sections = [arrayOfNodes[1].obj]
-			# arrayEdge = []
-			# i=1
-			# for edge in arrayOfNodes[0].obj.Shape.Edges:
-				# arrayEdge.append("Edge"+str(i))
-				# i += 1
-			# self.obj.Spine = (arrayOfNodes[0].obj,arrayEdge)
-			# arrayOfNodes[0].obj.ViewObject.Visibility = False
-			# arrayOfNodes[1].obj.ViewObject.Visibility = False
-		# else:
-		# return self
+	def layout_childs(self, *tupleOfNodes):
 		base = None
 		tool = None
-		if len(arrayOfNodes) == 2 :
-			base = arrayOfNodes[0]
-			tool = arrayOfNodes[1]
-		elif len(arrayOfNodes) > 2 :
-			base = arrayOfNodes[0]
-			tool = union(arrayOfNodes[1:])
+		if len(tupleOfNodes) == 2 :
+			base = tupleOfNodes[0]
+			tool = tupleOfNodes[1]
+		elif len(tupleOfNodes) > 2 :
+			base = tupleOfNodes[0]
+			tool = tupleOfNodes[1]
 		else:
-			print("Error, wrong number of sweep elements : "+str(len(arrayOfNodes)) +" and we need 2")
+			print("Error, wrong number of sweep elements : "+str(len(tupleOfNodes)) +" and we need 2")
 			return self
 		self.childs.append(base)
 		self.childs.append(tool)
@@ -1488,64 +1443,64 @@ class ApplyNodeFunc():
 	def fillet(self,name=None):
 		return self(fillet(name))
 	def mirror(x=0.0,y=0.0,z=0.0,name=None):
-		return self(mirror(x=0.0,y=0.0,z=0.0,name=None))
+		return self(mirror(x,y,z,name))
 	def offset(self,length=0.0,fillet=True,fusion=True,name=None):
 		return self(offset(length=length,fillet=fillet,fusion=fusion,name=name))
-	def offset2D(self,length=0.0,fillet=True,fusion=True,name=None):
+	def offset2D(self,length=0.0,fillet=True,fusion=True,name):
 		return self(offset2D(length=length,fillet=fillet,fusion=fusion,name=name))
 	def cube(size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None):
-		return self(cube(size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None))
+		return self(cube(size,y,z,center,x, name))
 	def box(x=1.0,y=1.0,z=1.0,center=None, name=None):
 		return self(box(x,y,z,center, name))
 	def tri_rect(x=1.0,y=1.0,z=1.0,center=None, name=None):
-		return self(tri_rect(x=1.0,y=1.0,z=1.0,center=None, name=None))
+		return self(tri_rect(x,y,z,center, name))
 	def cylinder(r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
-		return self(cylinder(r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None))
+		return self(cylinder(r,h,center,d,r1,r2,d1,d2,angle,fn,name))
 	def cone(r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None):
-		return self(cone(r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None))
+		return self(cone(r1,r2,h,center,d1,d2,fn,name))
 	def sphere(r=1.0,center=None,d=0.0,fn=1,name=None):
-		return self(sphere(r=1.0,center=None,d=0.0,fn=1,name=None))
+		return self(sphere(r,center,d,fn,name))
 	def torus(r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
-		return self(torus(r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None))
+		return self(torus(r1, r2,center,d1,d2,name))
 	def poly_ext(r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
-		return self(poly_ext(r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None))
+		return self(poly_ext(r, nb, h,center,d,name))
 	def createPolyExt(node, r,nb,h,center):
 		return self(createPolyExt(node, r,nb,h,center))
 	def poly_int(a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
-		return self(poly_int(a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None))
+		return self(poly_int(a, nb, h,center,d,name))
 # def rotate2D(self, x=0.0,y=0.0):
 	def circle(r=1.0,center=None,d=0.0,fn=1,name=None):
-		return self(circle(r=1.0,center=None,d=0.0,fn=1,name=None))
+		return self(circle(r,center,d,fn,name))
 	def ellipse(r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):
-		return self(ellipse(r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None))
+		return self(ellipse(r1,r2,center,d1,d2,name))
 	def poly_reg(r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None):
-		return self(poly_reg(r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None))
+		return self(poly_reg(r,nb,center,inscr,d,name))
 	def square(size=1.0,y=0.0,x=0.0,center=None,name=None):
-		return self(square(size=1.0,y=0.0,x=0.0,center=None,name=None))
+		return self(square(size,y,x,center,name))
 	def rectangle(x=1.0,y=1.0,center=None,name=None):
-		return self(rectangle(x=1.0,y=1.0,center=None,name=None))
+		return self(rectangle(x,y,center,name))
 	def polygon(points=[], closed=True,name=None):
-		return self(polygon(points=[], closed=True,name=None))
+		return self(polygon(points, closed,name))
 	def bspline(points=[], closed=False,name=None):
-		return self(bspline(points=[], closed=False,name=None))
+		return self(bspline(points, closed,name))
 	def bezier(points=[], closed=False,name=None):
-		return self(bezier(points=[], closed=False,name=None))
+		return self(bezier(points, closed,name))
 	def helix(r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None):
-		return self(helix(r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None))
+		return self(helix(r,p,h,center,d,name))
 	def gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=None):
-		return self(gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=None))
+		return self(gear(nb, mod, angle, external, high_precision,name))
 	def line(p1=[0.0,0.0,0.0],p2=[1.0,1.0,1.0],center=None,name=None):
-		return self(line(p1=[0.0,0.0,0.0],p2=[1.0,1.0,1.0],center=None,name=None))
+		return self(line(p1,p2,center,name))
 	def text(text="Hello", size=1.0, font="arial.ttf",center=None,name=None):
-		return self(text(text="Hello", size=1.0, font="arial.ttf",center=None,name=None))
+		return self(text(text, size, font,center,name))
 	def z_extrude(length=1.0, angle=0.0):
-		return self(z_extrude(length=1.0, angle=0.0))
+		return self(z_extrude(length, angle))
 	def linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
-		return self(linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None))
+		return self(linear_extrude(x,y,z, angle,name))
 	def rotate_extrude(angle=360.0,name=None):
-		return self(rotate_extrude(angle=360.0,name=None))
+		return self(rotate_extrude(angle,name))
 	def path_extrude(frenet=True, transition = "Right corner",name=None):
-		return self(path_extrude(frenet=True, transition = "Right corner",name=None))
+		return self(path_extrude(frenet,transition,name))
 	
 def translate(x=0.0,y=0.0,z=0.0):
 	return ApplyNodeFunc(EasyNode.move, (x,y,z))
@@ -1561,3 +1516,85 @@ def scale(x=0.0,y=0.0,z=0.0):
 	
 def color(r=0.0,v=0.0,b=0,a=0.0):
 	return ApplyNodeFunc(magic_color, (r,v,b,a))
+######### import & export #########
+
+def importSvg(filename="./None.svg",ids=[],name=None):
+	global _idx_EasyNode
+	node = EasyNode()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "svg_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	node.simple= False
+	def importSvg_action(filename,ids=[]):
+		objects_before = FreeCAD.ActiveDocument.Objects
+		importSVG.insert(filename,FreeCAD.ActiveDocument.Name)
+		objects_inserted = FreeCAD.ActiveDocument.Objects
+		for obj in objects_before:
+			objects_inserted.remove(obj)
+		if(len(ids)==0):
+			if(len(objects_inserted)==1):
+				node.obj = objects_inserted[0]
+			else:
+				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
+				for obj in objects_inserted:
+					node(easyNodeStub(obj,"svg"))
+		else:
+			to_unionise = []
+			for idx in ids:
+				if(idx<len(objects_inserted)):
+					to_unionise.append(objects_inserted[idx])
+			if(len(to_unionise)==1):
+				node.obj = to_unionise[0]
+			else:
+				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
+				for obj in to_unionise:
+					node(easyNodeStub(obj,"svg"))
+				
+	node.addAction(importSvg_action, (filename,ids))
+	return node	
+	
+def easyNodeStub(obj, name):
+	global _idx_EasyNode
+	node = EasyNode()
+	_idx_EasyNode += 1
+	node.name = name+"_"+str(_idx_EasyNode)
+	node.obj = obj
+	return node
+
+def importStl(filename=";/None.stl",ids=[],name=None):
+	global _idx_EasyNode
+	node = EasyNode()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "stl_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	node.simple= False
+	def importStl_action(filename,ids=[]):
+		objects_before = FreeCAD.ActiveDocument.Objects
+		Mesh.insert(filename,FreeCAD.ActiveDocument.Name)
+		objects_inserted = FreeCAD.ActiveDocument.Objects
+		for obj in objects_before:
+			objects_inserted.remove(obj)
+		if(len(ids)==0):
+			if(len(objects_inserted)==1):
+				node.obj = objects_inserted[0]
+			else:
+				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
+				for obj in objects_inserted:
+					node(easyNodeStub(obj,"stl"))
+		else:
+			to_unionise = []
+			for idx in ids:
+				if(idx<len(objects_inserted)):
+					to_unionise.append(objects_inserted[idx])
+			if(len(to_unionise)==1):
+				node.obj = to_unionise[0]
+			else:
+				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
+				for obj in to_unionise:
+					node(easyNodeStub(obj,"stl"))
+	node.addAction(importStl_action, (filename,ids))
+	return node	
