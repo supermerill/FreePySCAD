@@ -14,10 +14,9 @@ The braces are replaced with parenthesis
 The ';' are replaced with ',' and you also have to place it after ')' if no other ')' are directly after that to respect the python syntax.  
 You can't let the modifiers like translate, rotate... be unattached: use the parenthesis or a dot (see below)
 
-    openscad: difference(){ translate([1,1,0]) cube(2); rotate([0,0,45]) cube(2); }
-    pyscad:   difference()( translate([1,1,0]).cube(2), rotate([0,0,45])(cube(2)),)
-minkowski and hull aren't coded.  
-minkowski can be replaced by offset() for the most simple case (sphere)
+    openscad: difference(){ translate([1,1,0]) cube(2); rotate([0,0,45]) cube(2); }  
+    pyscad:   difference()( translate([1,1,0]).cube(2), rotate([0,0,45])(cube(2)),)  
+resize, minkowski and hull aren't implemented.  
 
 You can also wrote a more concise code with Pyscad if you want (i was tired of writing "translate([ ])" over an over)
 
@@ -50,10 +49,11 @@ This function do the work of recreating only the node that need a redraw and don
 
 #### 1D:
 * line([x1,y1,z1],[x2,y2,z2],center)
-* helix(r,p,h,center) # p = pitch = height between the begin and the end of a loop
+* arc([x1,y1,z1],[x2,y2,z2],[x3,y3,z3],center)
+* helix(r,p,h,center) # p = pitch = height between the begin and the end of a single loop
 
-#### 1D&2D:
-* circle( r)  
+#### 1D / 2D:
+* circle(r)  
 * ellipse(r,l)  
 * polygon([points],closed)  
 * bspline([points],closed)  
@@ -67,10 +67,11 @@ This function do the work of recreating only the node that need a redraw and don
 * gear(nb, mod, angle, external, high_precision)  
 
 
-#### 2D to 3D:
-* linear_extrude(height,convexity,twist,slices,scale)  
-* rotate_extrude(angle)  
-* path_extrude(frenet,transition)(path1D, patron2D)  
+#### transformation 1D to 2D to 3D:
+* create_wire()(...1D) #create a new wire from many edges, can be extruded if they are connected
+* linear_extrude(height,convexity,twist,slices,scale)(obj_2D)  
+* rotate_extrude(angle)(obj_2D) #rotate over the Z axis  
+* path_extrude(frenet,transition)(path_1D, patron_2D)  
 
 #### 3D:
 * sphere(r|d,fn)  
@@ -82,14 +83,12 @@ This function do the work of recreating only the node that need a redraw and don
 * torus(r1,r2,h)  
 * poly_ext(r,nb,h) # r = radius, nb = nb vertex (min 3)  
 * poly_int(a,nb,h) # a = apothem, nb = nb vertex (min 3)  
+* polyhedron(points, faces) # for debugging use polyhedron_wip : it creates a group of points & faces instead of a 3D model  
 
-#### Modifiers:
-* .x/y/z() / .center()
-* translate/move(x,y,z)(...3D) / move([x,y,z])(...3D) / .move(x,y,z) / .move([x,y,z]) / move(x,y,z).somethingelse  
-* rotate(x,y,z)(...3D) / rotate([x,y,z])(...3D) / .rotate(x,y,z) / .rotate([x,y,z]) / rotate(x,y,z).somethingelse  
-* scale(x,y,z)(...3D) / scale([x,y,z])(...3D) / .scale(x,y,z) / .scale([x,y,z]) / scale(x,y,z).somethingelse  
-* .color("colorname") / color(r,g,b,a) / color([r,g,b,a]) / color(something)(...) / color(something).somethingelse  
-* .multmatrix(m)  
+#### 3D Boolean operations:
+* union()(...3D) / union().add(...3D)  
+* intersection()(...3D)  
+* difference()(...3D) / cut()(...3D)  
 
 #### Transformations:
 * mirror(x,y,z)(...) / mirror([x,y,z])(...)  
@@ -98,24 +97,29 @@ This function do the work of recreating only the node that need a redraw and don
 * offset(length,fillet,fusion)(...3D)  
 * offset2D(length,fillet,fusion)(...2D)  
 
-#### 3D Boolean operations:
-* union()(...3D) / union().add(...3D)  
-* inter()(...3D)  
-* cut()(...3D) / difference()(...3D)  
+#### Modifiers:
+* .x/y/z() / .center()
+* translate/move(x,y,z)(...) / move([x,y,z])(...) / .move(x,y,z) / .move([x,y,z]) / move(x,y,z).stdfuncXXX(  
+* rotate(x,y,z)(...) / rotate([x,y,z])(...) / .rotate(x,y,z) / .rotate([x,y,z]) / rotate(x,y,z).stdfuncXXX(  
+* scale(x,y,z)(...) / scale([x,y,z])(...) / .scale(x,y,z) / .scale([x,y,z]) / scale(x,y,z).stdfuncXXX(  
+* .color("colorname") / color(r,g,b,a) / color([r,g,b,a]) / color(something)(...) / color(something).stdfuncXXX(  
+* .multmatrix(m)  
 
 #### Other:
 * scene().draw(...3D) / scene().redraw(...3D) #redraw() erase everything in the document before rebuilding the object tree. Draw() try to update when possible and don't erase everything.
 * importSvg(filepath,ids) #ids is an optional array of index to say which one have to be imported
 * importStl(filepath,ids) 
+* group()(...) # a group of nodes (1D, 2D & 3D can be mixed), for viewing purpose only as it can't be used by anything. You can use the modifiers, though.
 
-All python language and standard library
+All python syntax and standard library can be used  
 
 ### notes: 
 * ...3D represent a list (possibly empty) of 3D node
-* you can replace )(...) by ).add(...) for union, difference and
-* center: on almost every object, you can set as parameter, center=True or center=center_x, center=center_yz, ...
+* You can replace )(...) by ).add(...) for union, difference and
+* Center: on almost every object, you can set as parameter, center=True or center=center_x, center=center_yz, ...
 	you can also use the transformation .center() or .x(), .yz(), ....
-* name: on almost everything, you can set the name parameter to whatever you want, it will be shown in the FreeCAD object hierarchy.
-* the notation move(2).box(1) should be used only whne it's very convenient, It's here to make conversion from openscad to pyscad more easy, but It can led to strange behavior, see the two points below.
-* Order of execution: move(6)(move(3).move(2).cube(1).move(4).move(5)) => it's ugly, don't do that.
-* the move(2).box(1) work but you cannot do move(1).myfunc() because myfunc isn't in the list of function that is available to the "move object". In this case, you have to use move(1)(myfunc()) or myfunc().move(1)
+* Name: on almost everything, you can set the name parameter to whatever you want, it will be shown in the FreeCAD object hierarchy.
+* The notation move(2).box(1) should be used only when it's very convenient, it's here mainly to make conversion from openscad to pyscad more easy, but it can led to strange behaviors, see the two points below.
+* Order of execution: move(6)(move(3).move(2).cube(1).move(4).move(5)) => it begin at the object then move away from it. 
+* The move(2).box(1) work but you cannot do move(1).myfunc() because myfunc isn't in the list of functions that is available to the "move object". In this case, you have to use move(1)(myfunc()) or myfunc().move(1)
+* When a part fail to compile, it creates a sphere of size _default_size. you can change the variable _default_size, it's used as a default value when 0.0 will create an impossible object. Example: circle() == circle(_default_size).

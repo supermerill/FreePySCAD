@@ -28,7 +28,7 @@ import Part, FreeCAD, math, Draft, InvoluteGearFeature, importSVG, Mesh
 from FreeCAD import Base
 
 ######### basic functions #########
-def getColorCode(str):
+def _getColorCode(str):
 	if(str == "red"):		return (1.0,0.0,0.0,0.0)
 	if(str == "lime"):		return (0.0,1.0,0.0,0.0)
 	if(str == "blue"):		return (0.0,0.0,1.0,0.0)
@@ -49,7 +49,7 @@ def getColorCode(str):
 	if(str == "olive"):		return (0.5,0.5,0.0,0.0)
 	return (0.5,0.5,0.5,0.5)
 	
-def getTuple2(a,b,default_first_item):
+def _getTuple2(a,b,default_first_item):
 	if(isinstance(a, list)):
 		if(len(a)==0):
 			a=default_first_item
@@ -59,10 +59,10 @@ def getTuple2(a,b,default_first_item):
 			b=a[1]
 			a=a[0]
 	return (a,b)
-def getTuple2Abs(a,b,default_first_item):
-	(a,b) = getTuple2(a,b,default_first_item)
+def _getTuple2Abs(a,b,default_first_item):
+	(a,b) = _getTuple2(a,b,default_first_item)
 	return (abs(a), abs(b))
-def getTuple3(a,b,c,default_first_item):
+def _getTuple3(a,b,c,default_first_item):
 	if(isinstance(a, list)):
 		if(len(a)==0):
 			a=default_first_item
@@ -76,10 +76,10 @@ def getTuple3(a,b,c,default_first_item):
 			b=a[1]
 			a=a[0]
 	return (a,b,c)
-def getTuple3Abs(a,b,c,default_first_item):
-	(a,b,c) = getTuple3(a,b,c,default_first_item)
+def _getTuple3Abs(a,b,c,default_first_item):
+	(a,b,c) = _getTuple3(a,b,c,default_first_item)
 	return (abs(a),abs(b),abs(c))
-def getTuple4(a,b,c,d,default_first_item):
+def _getTuple4(a,b,c,d,default_first_item):
 	if(isinstance(a, list)):
 		if(len(a)==0):
 			a=default_first_item
@@ -98,10 +98,23 @@ def getTuple4(a,b,c,d,default_first_item):
 			b=a[1]
 			a=a[0]
 	return (a,b,c,d)
-def getTuple4Abs(a,b,c,d,default_first_item):
-	(a,b,c,d) = getTuple4(a,b,c,d,default_first_item)
+def _getTuple4Abs(a,b,c,d,default_first_item):
+	(a,b,c,d) = _getTuple4(a,b,c,d,default_first_item)
 	return (abs(a),abs(b),abs(c),abs(d))
 	
+def _moy_vect(points=[]):
+	moy = [0.0,0.0,0.0]
+	nb=0
+	for p in points:
+		moy[0]+=p[0]
+		moy[1]+=p[1]
+		moy[2]+=p[2]
+		nb+=1
+	moy[0]/=nb
+	moy[1]/=nb
+	moy[2]/=nb
+	return moy
+
 ######### scene class #########
 
 if(not 'tree_storage' in globals()):
@@ -161,6 +174,7 @@ def scene():
 ######### Basic class a utilities ######### 
 
 _idx_EasyNode = 0
+_default_size = 1
 
 class EasyNode:
 	def __init__(self):
@@ -328,14 +342,14 @@ class EasyNode:
 		self.actions.append((self.move_action,(x,y,z)))
 		return self
 	def move_action(self, x=0,y=0,z=0):
-		(x,y,z) = getTuple3(x,y,z,0)
+		(x,y,z) = _getTuple3(x,y,z,0)
 		self.obj.Placement.move(Base.Vector(x, y, z))
 		return self
 	def rotate(self, x=0,y=0,z=0):
 		self.actions.append((self.rotate_action,(x,y,z)))
 		return self
 	def rotate_action(self, x=0,y=0,z=0):
-		(x,y,z) = getTuple3(x,y,z,0)
+		(x,y,z) = _getTuple3(x,y,z,0)
 		myMat = Base.Matrix()
 		myMat.rotateX(x*math.pi/180)
 		myMat.rotateY(y*math.pi/180)
@@ -351,9 +365,12 @@ class EasyNode:
 			node.scale(x,y,z,_instantly=True)
 		return self
 	def multmatrix(self, mat):
+		self.actions_after.append((self.multmatrix_action,(mat,)))
+		self.simple = False
+		return self
+	def multmatrix_action(self, mat):
 		for node in self.childs:
 			node.multmatrix(mat)
-		self.simple = False
 		return self
 	def color(self, r=0.0,v=0.0,b=0,a=0.0,_instantly=False):
 		self.actions_after.append((self.color_action,(r,v,b,a)))
@@ -394,7 +411,16 @@ class EasyNode:
 	def center_action(self,x,y,z):
 		self.move_action(-self.centerx if self.centerx>0 else 0.0,-self.centery if self.centery>0 else 0.0,-self.centerz if self.centerz>0 else 0.0)
 		return self
-		
+
+	
+def _easyNodeStub(obj, name):
+	global _idx_EasyNode
+	node = EasyNode()
+	_idx_EasyNode += 1
+	node.name = name+"_"+str(_idx_EasyNode)
+	node.obj = obj
+	return node
+
 def useCenter(node, center):
 	if(center != None and callable(center)):
 		center(node)
@@ -405,7 +431,7 @@ class EasyNodeColored(EasyNode):
 	def color(self, r=0.0,v=0.0,b=0.0,a=0.0,_instantly=False):
 		if isinstance(r, str):
 			if(a!=0.0):
-				colorcode = getColorCode(r)
+				colorcode = _getColorCode(r)
 				colorcode[3] = a
 				if(_instantly):
 					self.color_action(colorcode)
@@ -413,12 +439,12 @@ class EasyNodeColored(EasyNode):
 					self.actions.append((self.color_action,(colorcode,)))
 			else:
 				if(_instantly):
-					self.color_action(getColorCode(r))
+					self.color_action(_getColorCode(r))
 				else:
-					self.actions.append((self.color_action,(getColorCode(r),)))
+					self.actions.append((self.color_action,(_getColorCode(r),)))
 		else:
 			#fixme: try to see in an array is not hidden inside the r
-			(r,v,b,a) = getTuple4Abs(r,v,b,a,0.0)
+			(r,v,b,a) = _getTuple4Abs(r,v,b,a,0.0)
 			if(_instantly):
 				self.color_action((max(0.0,min(r,1.0)),max(0.0,min(v,1.0)),max(0.0,min(b,1.0)),max(0.0,min(a,1.0))))
 			else:
@@ -447,12 +473,12 @@ class EasyNodeLeaf(EasyNodeColored):
 			self.actions.append((self.scale_action,(x,y,z)))
 		return self
 	def scale_action(self, x,y,z):
-		(x,y,z) = getTuple3(x,y,z,0.0)
+		(x,y,z) = _getTuple3(x,y,z,0.0)
 		myMat = Base.Matrix()
 		myMat.scale(x,y,z)
 		self.obj.Shape = self.obj.Shape.transformGeometry(myMat)
 		return self
-	def multmatrix(self, mat):
+	def multmatrix_action(self, mat):
 		flatarray = []
 		for array in mat:
 			for num in array:
@@ -478,7 +504,7 @@ def union(name=None):
 	else:
 		node.name = name
 	def createUnion(node,name):
-		node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", node.name)
 	node.addAction(createUnion, (node,name))
 	return node
 	
@@ -491,9 +517,11 @@ def inter(name=None):
 	else:
 		node.name = name
 	def createInter(node,name):
-		node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiCommon", "inter_"+str(_idx_EasyNode))
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiCommon", node.name)
 	node.addAction(createInter, (node,name))
 	return node
+def intersection(name=None):
+	return inter(name)
 
 class EasyNodeDiff(EasyNode):
 	def __init__(self):
@@ -661,7 +689,7 @@ class EasyNodeMirror(EasyNodeColored):
 		return self
 
 def mirror(x=0.0,y=0.0,z=0.0,name=None):
-	(x,y,z) = getTuple3(x,y,z,0.0)
+	(x,y,z) = _getTuple3(x,y,z,0.0)
 	global _idx_EasyNode
 	node = EasyNodeMirror()
 	_idx_EasyNode += 1
@@ -676,7 +704,7 @@ def mirror(x=0.0,y=0.0,z=0.0,name=None):
 	node.addAction(createMirror, (node))
 	return node
 
-def offset(length=1.0,fillet=True,fusion=True,name=None):
+def offset(length=_default_size,fillet=True,fusion=True,name=None):
 	global _idx_EasyNode
 	node = EasyNodeMirror()
 	_idx_EasyNode += 1
@@ -694,7 +722,7 @@ def offset(length=1.0,fillet=True,fusion=True,name=None):
 	node.addAction(createOffset, (node, length, fillet, fusion))
 	return node
 
-def offset2D(length=1.0,fillet=True,fusion=True,name=None):
+def offset2D(length=_default_size,fillet=True,fusion=True,name=None):
 	global _idx_EasyNode
 	node = EasyNodeMirror()
 	_idx_EasyNode += 1
@@ -712,20 +740,59 @@ def offset2D(length=1.0,fillet=True,fusion=True,name=None):
 	node.addAction(createOffset2D, (node, length, fillet, fusion))
 	return node
 
+# group: can't be modified, it's just for storage for cleaning the hierachy
+# move & rotate are passed to the childs.
+#note: even less tested than the rest
+class EasyNodeGroup(EasyNode):
+	def layout_childs(self, *tupleOfNodes):
+		arrayShape = self.obj.Group
+		for enode in tupleOfNodes :
+			if(isinstance(enode, EasyNode)):
+				arrayShape.append(enode.obj)
+				enode.obj.ViewObject.Visibility = True
+			else:
+				print("error, trying to layout '"+str(enode)+"' into a union of EsayNode")
+		self.obj.Group = arrayShape
+	def move_action(self, x=0,y=0,z=0):
+		print("moveaction group:",x, y, z)
+		for enode in self.childs :
+			if(isinstance(enode, EasyNode)):
+				print(enode.name+" moveaction")
+				enode.move_action(x, y, z)
+		return self
+	def rotate_action(self, x=0,y=0,z=0):
+		for enode in self.childs :
+			if(isinstance(enode, EasyNode)):
+				enode.rotate_action(x, y, z)
+		return self
+def group(name=None):
+	global _idx_EasyNode
+	node = EasyNodeGroup()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "group_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	def createGroup(node,name):
+		node.obj = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroup", node.name)
+	node.addAction(createGroup, (node,name))
+	return node
+
+
 ######### 3D objects ######### 
 
 
 def cube(size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None):
-	(x,y,z,size) = getTuple4Abs(size,y,z,x,0.0)
+	(x,y,z,size) = _getTuple4Abs(size,y,z,x,0.0)
 	if(x==0.0 and size != 0.0):
 		x = size
 	if(y==0.0 and z==0.0):
 		return box(x,x,x,center, name)
 	else:
-		return box(x,y if y!=0.0 else 1.0, z if z!=0.0 else 1.0,center, name)
+		return box(x,y if y!=0.0 else _default_size, z if z!=0.0 else _default_size,center, name)
 
-def box(x=1.0,y=1.0,z=1.0,center=None, name=None):
-	(x,y,z) = getTuple3Abs(x,y,z,1.0)
+def box(x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
+	(x,y,z) = _getTuple3Abs(x,y,z,_default_size)
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
 	_idx_EasyNode += 1
@@ -743,8 +810,8 @@ def box(x=1.0,y=1.0,z=1.0,center=None, name=None):
 	node.addAction(createBox, (node, x,y,z,center))
 	return node
 
-def tri_rect(x=1.0,y=1.0,z=1.0,center=None, name=None):
-	(x,y,z) = getTuple3Abs(x,y,z,1.0)
+def tri_rect(x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
+	(x,y,z) = _getTuple3Abs(x,y,z,_default_size)
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
 	_idx_EasyNode += 1
@@ -763,7 +830,7 @@ def tri_rect(x=1.0,y=1.0,z=1.0,center=None, name=None):
 	node.addAction(createTriRect, (node, x,y,z,center))
 	return node
 
-def cylinder(r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
+def cylinder(r=0.0,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
 	r = abs(r)
 	h = abs(h)
 	d = abs(d)
@@ -793,7 +860,7 @@ def cylinder(r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360
 	node.addAction(createCylinder, (node, r,h,center,angle))
 	return node
 
-def cone(r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None):
+def cone(r1=_default_size,r2=_default_size,h=_default_size,center=None,d1=0.0,d2=0.0,fn=1,name=None):
 	r1 = abs(r1)
 	r2 = abs(r2)
 	h = abs(h)
@@ -831,7 +898,7 @@ def cone(r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None):
 	node.addAction(createCone, (node, r1,r2,h,center))
 	return node
 
-def sphere(r=1.0,center=None,d=0.0,fn=1,name=None):
+def sphere(r=_default_size,center=None,d=0.0,fn=1,name=None):
 	r = abs(r)
 	d = abs(d)
 	if( r == 0.0 and d != 0.0):
@@ -853,7 +920,7 @@ def sphere(r=1.0,center=None,d=0.0,fn=1,name=None):
 	node.addAction(createSphere, (node, r,center))
 	return node
 
-def torus(r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
+def torus(r1=_default_size, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
 	r1 = abs(r1)
 	r2 = abs(r2)
 	d1 = abs(d1)
@@ -880,7 +947,7 @@ def torus(r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
 	return node
 	
 
-def poly_ext(r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
+def poly_ext(r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
 	r = abs(r)
 	h = abs(h)
 	nb= max(3, abs(nb))
@@ -912,7 +979,7 @@ def poly_ext(r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
 	node.addAction(createPolyExt, (node, r,nb,h,center))
 	return node
 
-def poly_int(a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
+def poly_int(a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
 	a = abs(a)
 	h = abs(h)
 	nb= max(3, abs(nb))
@@ -922,6 +989,80 @@ def poly_int(a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
 	# create polygon with apothem, not radius
 	radius = a * math.cos(math.radians(180)/nb)
 	return poly_ext(radius,nb,h,center,name)
+
+def polyhedron(points=[], faces=[],center=None,name=None):
+	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<2):
+		return sphere(1)
+	if(not (isinstance(faces[0], list) or isinstance(faces[0], tuple)) or len(faces)<2):
+		return sphere(1)
+	global _idx_EasyNode
+	node = EasyNodeLeaf()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "polyhedron_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	def createPolyhedron(node, points,faces):
+		try:
+			vectors = []
+			for point in points:
+				vectors.append(Base.Vector(float(point[0]) if len(point)>0 else 0.0, float(point[1]) if len(point)>1 else 0.0, float(point[2]) if len(point)>2 else 0.0))
+			polygons = []
+			for face in faces:
+				face_vect = []
+				for idx in face:
+					face_vect.append(vectors[idx])
+				face_vect.append(vectors[face[0]])
+				print("face : ",face_vect)
+				polygons.append(Part.Face([Part.makePolygon(face_vect)]))
+			node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+			node.obj.Shape = Part.Solid(Part.Shell(polygons))
+			node.centerx = 0.0
+			node.centery = 0.0
+			node.centerz = 0.0
+		except:
+			node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+			node.obj.Shape = Part.makeSphere(_default_size)
+			node.move(_moy_vect(points))
+			node.centerx = 0.0
+			node.centery = 0.0
+			node.centerz = 0.0
+	node.addAction(createPolyhedron, (node, points,faces))
+	return node
+
+def polyhedron_wip(points=[], faces=[],center=None,name=None):
+	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<2):
+		return sphere(1)
+	global _idx_EasyNode
+	if(name == None or not isinstance(name, str)):
+		name = "polyhedron_wip_"+str(_idx_EasyNode)
+	node = group(name)
+	shapes = []
+	if(len(faces)==0):
+		idx=0
+		for p in points:
+			shapes.append(point(p, name=node.name+"_p_"+str(idx)))
+			idx+=1
+	elif(len(faces)>0):
+		idx=0
+		for p in points:
+			shapes.append(point(p, name=node.name+"_p_"+str(idx)))
+			idx+=1
+		idx=0
+		for face in faces:
+			face_vect = []
+			for idx in face:
+				if(idx>=len(points)):
+					face_vect = []
+					break;
+				face_vect.append(points[idx])
+			if(len(face_vect)>2):
+				shapes.append(polygon(face_vect,closed=True, name=node.name+"_face_"+str(idx)))
+			else:
+				shapes.append(sphere(_default_size, name=node.name+"_face_"+str(idx)))
+			idx+=1
+	node.add(shapes)
+	return node
 
 ######### 2D & 1D objects ######### 
 
@@ -934,7 +1075,7 @@ class EasyNode2D(EasyNodeLeaf):
 		self.actions_after = []
 		self.simple = True
 	def rotate2D(self, x=0.0,y=0.0):
-		(x,y) = getTuple2(x,y,0.0)
+		(x,y) = _getTuple2(x,y,0.0)
 		myMat = Base.Matrix()
 		myMat.rotateX(y*math.pi/180)
 		myMat.rotateY(x*math.pi/180)
@@ -942,7 +1083,7 @@ class EasyNode2D(EasyNodeLeaf):
 		self.obj.Placement=FreeCAD.Placement(myMat).multiply(self.obj.Placement)
 		return self
 
-def circle(r=1.0,center=None,d=0.0,fn=1,name=None):
+def circle(r=_default_size,center=None,d=0.0,fn=1,name=None):
 	r=abs(r)
 	d = abs(d)
 	if(fn>2):
@@ -983,7 +1124,7 @@ def ellipse(r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):
 	else:
 		node.name = name
 	def createEllipse(node, r1,r2,center):
-		# node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "circle_"+str(_idx_EasyNode))
+		# node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "ellipse_"+str(_idx_EasyNode))
 		node.obj = Draft.makeEllipse(r2,r1)
 		node.obj.Label = node.name
 		# node.obj.Shape = temp_poly
@@ -993,7 +1134,7 @@ def ellipse(r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):
 	node.addAction(createEllipse, (node, r1,r2,center))
 	return node
 
-def poly_reg(r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None):
+def poly_reg(r=_default_size,nb=3,center=None,inscr=True,d=0.0,name=None):
 	r=abs(r)
 	d = abs(d)
 	nb=max(3,abs(nb))
@@ -1017,8 +1158,8 @@ def poly_reg(r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None):
 	node.addAction(createPolygonReg, (node, r,nb,center,inscr))
 	return node
 
-def square(size=1.0,y=0.0,x=0.0,center=None,name=None):
-	(size,y,x) = getTuple3Abs(size,y,x,1.0)
+def square(size=_default_size,y=0.0,x=0.0,center=None,name=None):
+	(size,y,x) = _getTuple3Abs(size,y,x,_default_size)
 	if(y>0.0):
 		if(x>0.0):
 			return rectangle(x,y,center=center)
@@ -1040,8 +1181,8 @@ def square(size=1.0,y=0.0,x=0.0,center=None,name=None):
 	node.addAction(createSquare, (node, size,center))
 	return node
 
-def rectangle(x=1.0,y=1.0,center=None,name=None):
-	(x,y) = getTuple2Abs(x,y,1.0)
+def rectangle(x=_default_size,y=_default_size,center=None,name=None):
+	(x,y) = _getTuple2Abs(x,y,_default_size)
 	global _idx_EasyNode
 	node = EasyNode2D()
 	_idx_EasyNode += 1
@@ -1060,11 +1201,11 @@ def rectangle(x=1.0,y=1.0,center=None,name=None):
 
 def polygon(points=[], closed=True,name=None):
 	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<2):
-		return circle(1)
+		return circle(_default_size)
 	if(len(points)==1 and (isinstance(points[0], list) or isinstance(points[0], tuple))):
 		points = points[0]
 	if len(points) < 3:
-		return circle(1)
+		return circle(_default_size)
 	global _idx_EasyNode
 	node = EasyNode2D()
 	_idx_EasyNode += 1
@@ -1079,11 +1220,15 @@ def polygon(points=[], closed=True,name=None):
 			vectors.append(Base.Vector(float(point[0]) if len(point)>0 else 0.0, float(point[1]) if len(point)>1 else 0.0, float(point[2]) if len(point)>2 else 0.0))
 		if(closed):
 			vectors.append(Base.Vector(float(points[0][0]) if len(points[0])>0 else 0.0, float(points[0][1]) if len(points[0])>1 else 0.0, float(points[0][2]) if len(points[0])>2 else 0.0))
-		temp_poly = Part.makePolygon(vectors) 
-		if(closed):
-			node.obj.Shape = Part.Face(temp_poly)
-		else:
-			node.obj.Shape = temp_poly
+		try:
+			temp_poly = Part.makePolygon(vectors) 
+			if(closed):
+				node.obj.Shape = Part.Face(temp_poly)
+			else:
+				node.obj.Shape = temp_poly
+		except:
+			node.obj.Shape = Part.makeSphere(_default_size)
+			node.move(_moy_vect(points))
 		node.centerx = 0.0
 		node.centery = 0.0
 	node.addAction(createPolygon, (node, points,center))
@@ -1091,7 +1236,7 @@ def polygon(points=[], closed=True,name=None):
 
 def bspline(points=[], closed=False,name=None):
 	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<2):
-		return circle(1)
+		return circle(_default_size)
 	if(len(points)==1 and (isinstance(points[0], list) or isinstance(points[0], tuple))):
 		points = points[0]
 	vectors = []
@@ -1115,7 +1260,7 @@ def bspline(points=[], closed=False,name=None):
 
 def bezier(points=[], closed=False,name=None):
 	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<3):
-		return circle(1)
+		return circle(_default_size)
 	if(len(points)==1 and (isinstance(points[0], list) or isinstance(points[0], tuple))):
 		points = points[0]
 	vectors = []
@@ -1137,7 +1282,7 @@ def bezier(points=[], closed=False,name=None):
 	node.addAction(createBezier, (node, vectors,center,closed))
 	return node
 
-def helix(r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None):
+def helix(r=_default_size,p=_default_size,h=_default_size,center=None,d=0.0,name=None):
 	r = abs(r)
 	p = abs(p)
 	h = abs(h)
@@ -1160,31 +1305,78 @@ def helix(r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None):
 	node.addAction(createHelix, (node, r,p,h,center))
 	return node
 	
-def line(p1=[0.0,0.0,0.0],p2=[1.0,1.0,1.0],center=None,name=None):
+def point(p=[0.0,0.0,0.0],center=None,name=None):
+	if(not isinstance(p,list) and not isinstance(p,tuple)):
+		p = [0.0,0.0,0.0]
+	p = ( float(p[0]) if len(p)>0 else 0.0, float(p[1]) if len(p)>1 else 0.0, float(p[2]) if len(p)>2 else 0.0 )
+	global _idx_EasyNode
+	node = EasyNode()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "line_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	def createPoint(node, p,center):
+		node.obj = Draft.makePoint(Base.Vector(p))
+		node.centerx = 0
+		node.centery = 0
+		node.centerz = 0
+		useCenter(node, center)
+	node.addAction(createPoint, (node, p,center))
+	return node
+	
+def line(p1=[0.0,0.0,0.0],p2=[_default_size,_default_size,_default_size],center=None,name=None):
 	if(not isinstance(p1,list) and not isinstance(p1,tuple)):
 		p1 = [0.0,0.0,0.0]
 	if(not isinstance(p2,list) and not isinstance(p2,tuple)):
-		p2 = [1.0,1.0,1.0]
+		p2 = [_default_size,_default_size,_default_size]
 	p1 = ( float(p1[0]) if len(p1)>0 else 0.0, float(p1[1]) if len(p1)>1 else 0.0, float(p1[2]) if len(p1)>2 else 0.0 )
 	p2 = ( float(p2[0]) if len(p2)>0 else 0.0, float(p2[1]) if len(p2)>1 else 0.0, float(p2[2]) if len(p2)>2 else 0.0 )
 	global _idx_EasyNode
 	node = EasyNode()
 	_idx_EasyNode += 1
 	if(name == None or not isinstance(name, str)):
-		node.name = "3Dpolygon_"+str(_idx_EasyNode)
+		node.name = "line_"+str(_idx_EasyNode)
 	else:
 		node.name = name
 	def createLine(node, p1,p2,center):
-		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "line_"+str(_idx_EasyNode))
-		node.obj.Shape = Part.makeLine (p1,p2)
-		node.centerx = p1[0] # TODO: maybe pushit to the real center of the line instead of the start?
-		node.centery = p1[1]
-		node.centerz = p1[2]
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+		node.obj.Shape = Part.makeLine(p1,p2)
+		node.centerx = (p1[0]+p2[0])/2.0
+		node.centery = (p1[1]+p2[1])/2.0
+		node.centerz = (p1[2]+p2[2])/2.0
 		useCenter(node, center)
 	node.addAction(createLine, (node, p1,p2,center))
 	return node
 	
-def text(text="Hello", size=1.0, font="arial.ttf",center=None,name=None):
+def arc(p1=[_default_size,0.0,0.0],p2=[_default_size*0.7071,_default_size*0.7071,0.0],p3=[0.0,_default_size,0.0],center=None,name=None):
+	if(not isinstance(p1,list) and not isinstance(p1,tuple)):
+		p1 = [_default_size,0.0,0.0]
+	if(not isinstance(p2,list) and not isinstance(p2,tuple)):
+		p2 = [_default_size*0.7071,_default_size*0.7071,0.0]
+	if(not isinstance(p3,list) and not isinstance(p3,tuple)):
+		p3 = [0.0,_default_size,0.0]
+	p1 = ( float(p1[0]) if len(p1)>0 else 0.0, float(p1[1]) if len(p1)>1 else 0.0, float(p1[2]) if len(p1)>2 else 0.0 )
+	p2 = ( float(p2[0]) if len(p2)>0 else 0.0, float(p2[1]) if len(p2)>1 else 0.0, float(p2[2]) if len(p2)>2 else 0.0 )
+	p3 = ( float(p3[0]) if len(p3)>0 else 0.0, float(p3[1]) if len(p3)>1 else 0.0, float(p3[2]) if len(p3)>2 else 0.0 )
+	global _idx_EasyNode
+	node = EasyNode()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "arc_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	def createArc(node, p1,p2,p3,center):
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+		node.obj.Shape = Part.Shape([Part.Arc(Base.Vector(p1),Base.Vector(p2),Base.Vector(p3))])
+		node.centerx = (p1[0]+p3[0])/2.0
+		node.centery = (p1[1]+p3[1])/2.0
+		node.centerz = (p1[2]+p3[2])/2.0
+		useCenter(node, center)
+	node.addAction(createArc, (node, p1,p2,p3,center))
+	return node
+	
+def text(text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
 	global _idx_EasyNode
 	node = EasyNode2D()
 	_idx_EasyNode += 1
@@ -1242,7 +1434,7 @@ class EasyNodeLinear(EasyNodeColored):
 			self.obj.Base.ViewObject.Visibility = False
 		return self
 
-def z_extrude(length=1.0, angle=0.0,name=None):
+def z_extrude(length=_default_size, angle=0.0,name=None):
 	print(str(length)+" -> "+str(angle))
 	global _idx_EasyNode
 	node = EasyNodeLinear()
@@ -1261,7 +1453,7 @@ def z_extrude(length=1.0, angle=0.0,name=None):
 	return node
 
 def linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
-	(x,y,z) = getTuple3Abs(x,y,z,0.0)
+	(x,y,z) = _getTuple3Abs(x,y,z,0.0)
 	normal = Base.Vector(x,y,z);
 	length = normal.Length
 	global _idx_EasyNode
@@ -1305,7 +1497,7 @@ def rotate_extrude(angle=360.0,name=None):
 		node.name = name
 	def createRExtrude(node, angle):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Revolution", node.name)
-		node.obj.Axis = Base.Vector(0.0,1.0,0.0)
+		node.obj.Axis = Base.Vector(0.0,_default_size,0.0)
 		node.obj.Base = Base.Vector(0.0,0.0,0.0)
 		node.obj.Angle = float(angle)
 		node.obj.Solid = True
@@ -1329,8 +1521,8 @@ class EasyNodeSweep(EasyNode):
 		else:
 			print("Error, wrong number of sweep elements : "+str(len(tupleOfNodes)) +" and we need 2")
 			return self
-		self.childs.append(base)
-		self.childs.append(tool)
+		# self.childs.append(base)
+		# self.childs.append(tool)
 		self.obj.Sections = [tool.obj]
 		arrayEdge = []
 		i=1
@@ -1357,6 +1549,37 @@ def path_extrude(frenet=True, transition = "Right corner",name=None):
 		node.obj.Frenet = frenet
 		node.obj.Transition = transition
 	node.addAction(createPExtrude, (node, frenet,transition))
+	return node
+
+class EasyNodeAssembleWire(EasyNode):
+	def layout_childs(self, *tupleOfNodes):
+		edges = []
+		arrayObjChilds = []
+		for node in tupleOfNodes:
+			arrayObjChilds.append(node.obj)
+			node.obj.ViewObject.Visibility = False
+			for edge in node.obj.Shape.Edges:
+				edges.append(Part.Edge(edge))
+		#put childs into a group
+		obj_group = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroup", self.name+"_components")
+		obj_group.Group = arrayObjChilds
+		obj_group.ViewObject.Visibility = False
+		#create wire
+		self.obj.Shape = Part.Wire(edges)
+		return self
+
+#transition in ["Right corner", "Round corner","Transformed" ]
+def create_wire(name=None):
+	global _idx_EasyNode
+	node = EasyNodeAssembleWire()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "assemble_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	def createWire(node):
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+	node.addAction(createWire, (node,))
 	return node
 
 ######### convenience objects for chaining ########
@@ -1432,7 +1655,11 @@ class ApplyNodeFunc():
 		return self(union(name))
 	def inter(self,name=None):
 		return self(inter(name))
+	def intersection(self,name=None):
+		return self(inter(name))
 	def cut(self,name=None):
+		return self(cut(name))
+	def difference(self,name=None):
 		return self(cut(name))
 	def chamfer(self,name=None):
 		return self(chamfer(name))
@@ -1444,35 +1671,41 @@ class ApplyNodeFunc():
 		return self(offset(length=length,fillet=fillet,fusion=fusion,name=name))
 	def offset2D(self,length=0.0,fillet=True,fusion=True,name=None):
 		return self(offset2D(length=length,fillet=fillet,fusion=fusion,name=name))
+	def group(self,name=None):
+		return self(group(name))
 	def cube(self,size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None):
 		return self(cube(size,y,z,center,x, name))
-	def box(self,x=1.0,y=1.0,z=1.0,center=None, name=None):
+	def box(self,x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
 		return self(box(x,y,z,center, name))
-	def tri_rect(self,x=1.0,y=1.0,z=1.0,center=None, name=None):
+	def tri_rect(self,x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
 		return self(tri_rect(x,y,z,center, name))
-	def cylinder(self,r=0.0,h=1.0,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
+	def cylinder(self,r=0.0,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
 		return self(cylinder(r,h,center,d,r1,r2,d1,d2,angle,fn,name))
-	def cone(self,r1=1.0,r2=1.0,h=1.0,center=None,d1=0.0,d2=0.0,fn=1,name=None):
+	def cone(self,r1=_default_size,r2=_default_size,h=_default_size,center=None,d1=0.0,d2=0.0,fn=1,name=None):
 		return self(cone(r1,r2,h,center,d1,d2,fn,name))
-	def sphere(self,r=1.0,center=None,d=0.0,fn=1,name=None):
+	def sphere(self,r=_default_size,center=None,d=0.0,fn=1,name=None):
 		return self(sphere(r,center,d,fn,name))
-	def torus(self,r1=1.0, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
+	def torus(self,r1=_default_size, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
 		return self(torus(r1, r2,center,d1,d2,name))
-	def poly_ext(self,r=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
+	def poly_ext(self,r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
 		return self(poly_ext(r, nb, h,center,d,name))
+	def polyhedron(self,points=[],faces=[],center=None,name=None):
+		return self(polyhedron(r, points, faces,center,name))
+	def polyhedron_wip(self,points=[],faces=[],center=None,name=None):
+		return self(polyhedron_wip(r, points, faces,center,name))
 	def createPolyExt(self,node, r,nb,h,center):
 		return self(createPolyExt(node, r,nb,h,center))
-	def poly_int(self,a=1.0, nb=3, h=1.0,center=None,d=0.0,name=None):
+	def poly_int(self,a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
 		return self(poly_int(a, nb, h,center,d,name))
-	def circle(self,r=1.0,center=None,d=0.0,fn=1,name=None):
+	def circle(self,r=_default_size,center=None,d=0.0,fn=1,name=None):
 		return self(circle(r,center,d,fn,name))
 	def ellipse(self,r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):
 		return self(ellipse(r1,r2,center,d1,d2,name))
-	def poly_reg(self,r=1.0,nb=3,center=None,inscr=True,d=0.0,name=None):
+	def poly_reg(self,r=_default_size,nb=3,center=None,inscr=True,d=0.0,name=None):
 		return self(poly_reg(r,nb,center,inscr,d,name))
-	def square(self,size=1.0,y=0.0,x=0.0,center=None,name=None):
+	def square(self,size=_default_size,y=0.0,x=0.0,center=None,name=None):
 		return self(square(size,y,x,center,name))
-	def rectangle(self,x=1.0,y=1.0,center=None,name=None):
+	def rectangle(self,x=_default_size,y=_default_size,center=None,name=None):
 		return self(rectangle(x,y,center,name))
 	def polygon(self,points=[], closed=True,name=None):
 		return self(polygon(points, closed,name))
@@ -1480,15 +1713,15 @@ class ApplyNodeFunc():
 		return self(bspline(points, closed,name))
 	def bezier(self,points=[], closed=False,name=None):
 		return self(bezier(points, closed,name))
-	def helix(self,r=1.0,p=1.0,h=1.0,center=None,d=0.0,name=None):
+	def helix(self,r=_default_size,p=_default_size,h=_default_size,center=None,d=0.0,name=None):
 		return self(helix(r,p,h,center,d,name))
 	def gear(self,nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=None):
 		return self(gear(nb, mod, angle, external, high_precision,name))
-	def line(self,p1=[0.0,0.0,0.0],p2=[1.0,1.0,1.0],center=None,name=None):
+	def line(self,p1=[0.0,0.0,0.0],p2=[_default_size,_default_size,_default_size],center=None,name=None):
 		return self(line(p1,p2,center,name))
-	def text(self,text="Hello", size=1.0, font="arial.ttf",center=None,name=None):
+	def text(self,text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
 		return self(text(text, size, font,center,name))
-	def z_extrude(self,length=1.0, angle=0.0):
+	def z_extrude(self,length=_default_size, angle=0.0):
 		return self(z_extrude(length, angle))
 	def linear_extrude(self,x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
 		return self(linear_extrude(x,y,z, angle,name))
@@ -1496,6 +1729,12 @@ class ApplyNodeFunc():
 		return self(rotate_extrude(angle,name))
 	def path_extrude(self,frenet=True, transition = "Right corner",name=None):
 		return self(path_extrude(frenet,transition,name))
+	def create_wire(self,name=None):
+		return self(create_wire(name))
+	def importSvg(self,filename="./None.svg", ids=[],name=None):
+		return self(importSvg(filename,ids,name))
+	def importStl(self,filename="./None.stl", ids=[],name=None):
+		return self(importStl(filename,ids,name))
 	
 def translate(x=0.0,y=0.0,z=0.0):
 	return ApplyNodeFunc(EasyNode.move, (x,y,z))
@@ -1511,6 +1750,7 @@ def scale(x=0.0,y=0.0,z=0.0):
 	
 def color(r=0.0,v=0.0,b=0,a=0.0):
 	return ApplyNodeFunc(magic_color, (r,v,b,a))
+
 ######### import & export #########
 
 def importSvg(filename="./None.svg",ids=[],name=None):
@@ -1534,7 +1774,7 @@ def importSvg(filename="./None.svg",ids=[],name=None):
 			else:
 				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
 				for obj in objects_inserted:
-					node(easyNodeStub(obj,"svg"))
+					node(_easyNodeStub(obj,"svg"))
 		else:
 			to_unionise = []
 			for idx in ids:
@@ -1545,18 +1785,10 @@ def importSvg(filename="./None.svg",ids=[],name=None):
 			else:
 				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
 				for obj in to_unionise:
-					node(easyNodeStub(obj,"svg"))
+					node(_easyNodeStub(obj,"svg"))
 				
 	node.addAction(importSvg_action, (filename,ids))
 	return node	
-	
-def easyNodeStub(obj, name):
-	global _idx_EasyNode
-	node = EasyNode()
-	_idx_EasyNode += 1
-	node.name = name+"_"+str(_idx_EasyNode)
-	node.obj = obj
-	return node
 
 def importStl(filename=";/None.stl",ids=[],name=None):
 	global _idx_EasyNode
@@ -1579,7 +1811,7 @@ def importStl(filename=";/None.stl",ids=[],name=None):
 			else:
 				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
 				for obj in objects_inserted:
-					node(easyNodeStub(obj,"stl"))
+					node(_easyNodeStub(obj,"stl"))
 		else:
 			to_unionise = []
 			for idx in ids:
@@ -1590,6 +1822,6 @@ def importStl(filename=";/None.stl",ids=[],name=None):
 			else:
 				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
 				for obj in to_unionise:
-					node(easyNodeStub(obj,"stl"))
+					node(_easyNodeStub(obj,"stl"))
 	node.addAction(importStl_action, (filename,ids))
 	return node	
