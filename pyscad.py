@@ -495,15 +495,31 @@ class EasyNodeLeaf(EasyNodeColored):
 
 ######### transformations ######### 
 
+class EasyNodeUnion(EasyNode):
+	is2D = False
+	def layout_childs(self, *tupleOfNodes):
+		if(self.is2D):
+			arrayobj= []
+			for node in self.childs:
+				arrayobj.append(node.obj)
+			newObj = Draft.upgrade(arrayobj,delete=True)[0][0]
+			# for()
+			newObj.Placement = Base.Placement(self.obj.Placement)
+			FreeCAD.ActiveDocument.removeObject(self.obj.Name)
+			self.obj = newObj
+
 def union(name=None):
 	global _idx_EasyNode
-	node = EasyNode()
+	node = EasyNodeUnion()
 	_idx_EasyNode += 1
 	if(name == None or not isinstance(name, str)):
 		node.name = "union_"+str(_idx_EasyNode)
 	else:
 		node.name = name
 	def createUnion(node,name):
+		if(len(node.childs)>0 and isinstance(node.childs[0], EasyNode2D)):
+			node.is2D = True
+			#Draft.upgrade(*tuple(node.childs))
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", node.name)
 	node.addAction(createUnion, (node,name))
 	return node
@@ -697,11 +713,11 @@ def mirror(x=0.0,y=0.0,z=0.0,name=None):
 		node.name = "mirror_"+str(_idx_EasyNode)
 	else:
 		node.name = name
-	def createMirror(node):
+	def createMirror(node,x,y,z):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Mirroring", node.name)
 		node.obj.Base = Base.Vector(0,0,0)
 		node.obj.Normal = Base.Vector(x,y,z).normalize()
-	node.addAction(createMirror, (node))
+	node.addAction(createMirror, (node,x,y,z))
 	return node
 
 def offset(length=_default_size,fillet=True,fusion=True,name=None):
@@ -1083,7 +1099,7 @@ class EasyNode2D(EasyNodeLeaf):
 		self.obj.Placement=FreeCAD.Placement(myMat).multiply(self.obj.Placement)
 		return self
 
-def circle(r=_default_size,center=None,d=0.0,fn=1,name=None):
+def circle(r=_default_size,fn=1,closed=True,center=None,d=0.0,name=None):
 	r=abs(r)
 	d = abs(d)
 	if(fn>2):
@@ -1100,7 +1116,10 @@ def circle(r=_default_size,center=None,d=0.0,fn=1,name=None):
 	def createCircle(node, r,center):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
 		temp_poly = Part.makeCircle(r)
-		node.obj.Shape = temp_poly
+		if(closed):
+			node.obj.Shape = Part.Face(Part.Wire(temp_poly))
+		else:
+			node.obj.Shape = Part.Wire(temp_poly)
 		node.centerx = -r
 		node.centery = -r
 		useCenter(node, center)
@@ -1397,6 +1416,7 @@ def text(text="Hello", size=_default_size, font="arial.ttf",center=None,name=Non
 
 def gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=None):
 	global _idx_EasyNode
+	node = EasyNode2D()
 	_idx_EasyNode += 1
 	if(name == None or not isinstance(name, str)):
 		node.name = "gear_"+str(_idx_EasyNode)
@@ -1410,7 +1430,6 @@ def gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=Non
 		gear.HighPrecision = high_precision
 		gear.ExternalGear = external
 		gear.PressureAngle = angle
-		node = EasyNode2D()
 		node.obj = gear
 		node.centerx = 0.0 #TODO
 		node.centery = 0.0
@@ -1419,7 +1438,6 @@ def gear(nb=6, mod=2.5, angle=20.0, external=True, high_precision=False,name=Non
 
 ######### Extrusion (2D to 3D) #########
 
-#todo: like cut, unionize auto
 class EasyNodeLinear(EasyNodeColored):
 	def __init__(self):
 		self.edges = [];
@@ -1429,30 +1447,53 @@ class EasyNodeLinear(EasyNodeColored):
 		self.simple = True
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>=1):
-			print("extrude "+tupleOfNodes[0].name)
 			self.obj.Base = tupleOfNodes[0].obj
 			self.obj.Base.ViewObject.Visibility = False
 		return self
 
-def z_extrude(length=_default_size, angle=0.0,name=None):
-	print(str(length)+" -> "+str(angle))
+def linear_extrude(height=_default_size,center=None,name=None, twist=0, taper=0.0, slices=0,convexity=0):
 	global _idx_EasyNode
 	node = EasyNodeLinear()
 	_idx_EasyNode += 1
 	if(name == None or not isinstance(name, str)):
-		node.name = "zextrude_"+str(_idx_EasyNode)
+		node.name = "lin_extrude_"+str(_idx_EasyNode)
 	else:
 		node.name = name
-	def createZExtrude(node, length,angle):
+	if(twist!=0):
+		#if twist, we have to create a sweep against an helix but we don't know the parameters of the helix yet
+		#so we add an action to the sweep node to create the helix and layout the thing
+		pitch = height * 360.0/abs(twist)
+		print("pitch="+str(pitch)+", h="+str(height))
+		extruder = path_extrude(frenet=True,name=node.name)
+		def create_helix(node, height, pitch, twist, nameNode):
+			if(len(node.childs)>0):
+				pos = node.childs[0].obj.Placement.Base
+				zpos = pos.z
+				pos.z = 0.0
+				radius = pos.Length
+				anglerad = math.atan2(pos.x,pos.y)
+				helix_obj = helix(r=radius,p=pitch,h=height, name=nameNode+"_twist").rotate(0,0,anglerad*180.0/math.pi)
+				if(twist>0):
+					helix_obj = mirror(0,1,0, name=nameNode+"_twist_m")(helix_obj)
+				node.childs.insert(0, helix_obj)
+				helix_obj.create()
+				node.layout_childs(*tuple(node.childs))
+		extruder.actions_after.append((create_helix, (extruder, height, pitch, twist, node.name)))
+		return extruder
+	def createZExtrude(node, height, taper, center):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Extrusion", node.name)
 		node.obj.DirMode = "Normal"
-		node.obj.TaperAngle = angle*180.0/math.pi
-		node.obj.LengthFwd = length
+		node.obj.TaperAngle = taper*180.0/math.pi
+		node.obj.LengthFwd = height
 		node.obj.Solid = True
-	node.addAction(createZExtrude, (node, length,angle))
+		node.centerx=0.0
+		node.centery=0.0
+		node.centerz=height/2.0
+		useCenter(node, center)
+	node.addAction(createZExtrude, (node, height, taper, center))
 	return node
 
-def linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
+def extrude(x=0.0,y=0.0,z=0.0, taper=0.0,name=None,convexity=0):
 	(x,y,z) = _getTuple3Abs(x,y,z,0.0)
 	normal = Base.Vector(x,y,z);
 	length = normal.Length
@@ -1463,30 +1504,24 @@ def linear_extrude(x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
 		node.name = "extrude_"+str(_idx_EasyNode)
 	else:
 		node.name = name
-	def createExtrude(node, x,y,z,angle):
+	def createExtrude(node, x,y,z,taper):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Extrusion", node.name)
 		node.obj.DirMode = "Custom"
 		node.obj.LengthFwd = length
-		node.obj.TaperAngle = angle
+		node.obj.TaperAngle = taper
 		node.obj.Dir = normal
 		node.obj.Solid = True
-	node.addAction(createExtrude, (node, x,y,z,angle))
+	node.addAction(createExtrude, (node, x,y,z,taper))
 	return node
 	
-#todo: like cut, unionize auto
 class EasyNodeRotateExtrude(EasyNodeColored):
-	# def __init__(self):
-		# self.childs = []
-		# self.actions = []
-		# self.actions_after = []
-		# self.simple = True
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>=1):
 			self.obj.Source = tupleOfNodes[0].obj
 			self.obj.Source.ViewObject.Visibility = False
 		return self
 
-def rotate_extrude(angle=360.0,name=None):
+def rotate_extrude(angle=360.0,name=None,convexity=2):
 	angle = min(abs(angle),360.0)
 	global _idx_EasyNode
 	node = EasyNodeRotateExtrude()
@@ -1507,9 +1542,12 @@ def rotate_extrude(angle=360.0,name=None):
 	node.addAction(createRExtrude, (node, angle))
 	return node
 
-#todo: like cut, unionize auto
 class EasyNodeSweep(EasyNode):
+	base = None
 	def layout_childs(self, *tupleOfNodes):
+		if len(tupleOfNodes) == 1 and self.base == None:
+			self.base = tupleOfNodes[0]
+			return self
 		base = None
 		tool = None
 		if len(tupleOfNodes) == 2 :
@@ -1518,11 +1556,12 @@ class EasyNodeSweep(EasyNode):
 		elif len(tupleOfNodes) > 2 :
 			base = tupleOfNodes[0]
 			tool = tupleOfNodes[1]
+		elif len(tupleOfNodes) == 1:
+			base = self.base
+			tool = tupleOfNodes[0]
 		else:
-			print("Error, wrong number of sweep elements : "+str(len(tupleOfNodes)) +" and we need 2")
+			# print("Error, wrong number of sweep elements : "+str(len(self.childs)) +" and we need 2")
 			return self
-		# self.childs.append(base)
-		# self.childs.append(tool)
 		self.obj.Sections = [tool.obj]
 		arrayEdge = []
 		i=1
@@ -1565,11 +1604,14 @@ class EasyNodeAssembleWire(EasyNode):
 		obj_group.Group = arrayObjChilds
 		obj_group.ViewObject.Visibility = False
 		#create wire
-		self.obj.Shape = Part.Wire(edges)
+		if(self.closed):
+			self.obj.Shape = Part.Face(Part.Wire(edges))
+		else:
+			self.obj.Shape = Part.Wire(edges)
 		return self
 
 #transition in ["Right corner", "Round corner","Transformed" ]
-def create_wire(name=None):
+def create_wire(closed=False, name=None):
 	global _idx_EasyNode
 	node = EasyNodeAssembleWire()
 	_idx_EasyNode += 1
@@ -1580,6 +1622,7 @@ def create_wire(name=None):
 	def createWire(node):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
 	node.addAction(createWire, (node,))
+	node.closed = closed
 	return node
 
 ######### convenience objects for chaining ########
