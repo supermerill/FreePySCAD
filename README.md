@@ -7,7 +7,7 @@ Pyscad is for you!
 ## How it work
 Pyscad is a python library that use FreeCAD to let user write their code in a text editor and see the result after a compilation process, like OpenSCAD but in FreeCAD.  
 To install the library, clone the github repository into the "Freecad X.xx/mod" directory  
-To write your code, you can open the freecad macro editor and begining your macro with "from Pyscad.pyscad import *"   
+To write your code, you can open the freecad macro editor and beginning your macro with "from Pyscad.pyscad import *"   
 You can also type in the python console "execfile('path_to/my_pycad.py')", this has the advantage to show the errors.
 ## what's different
 The braces are replaced with parenthesis  

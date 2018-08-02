@@ -7,14 +7,14 @@
 # print("You can use something like 'from ", __name__," import *' for a more convenient experience")
 #
 # usage: scene().show( many statement )
-# if you want to make a fucntion, don't forget to return the root node!
+# if you want to make a function, don't forget to return the root node!
 # Each function like cube() or union() return an object (EasyNode) 
 #  which store the know-how of how to build the object tree if needed.
 # The scene will only redraw a node and these children if one of the 
 #  child is changed. 
 #
 #
-# move() rotate() scale() color() return a differnt kind of object
+# move() rotate() scale() color() return a different kind of object
 #  because they are not a mod but a modifier onto a node. They can 
 #  be use almost like the other one, no ned to worry.
 #
@@ -740,7 +740,7 @@ def offset2D(length=_default_size,fillet=True,fusion=True,name=None):
 	node.addAction(createOffset2D, (node, length, fillet, fusion))
 	return node
 
-# group: can't be modified, it's just for storage for cleaning the hierachy
+# group: can't be modified, it's just for storage for cleaning the hierarchy
 # move & rotate are passed to the childs.
 #note: even less tested than the rest
 class EasyNodeGroup(EasyNode):
@@ -1610,7 +1610,7 @@ class ApplyNodeFunc():
 				if(isinstance(node, EasyNode)):
 					goodnodes.append(node)
 		if(len(goodnodes)==0):
-			print("Error, use a fucntion on no node ")
+			print("Error, use a function on no node ")
 			return self
 		elif(len(goodnodes)==1):
 			print("do(1) "+self.func.__name__)
@@ -1631,7 +1631,7 @@ class ApplyNodeFunc():
 			elif(len(self.args)==4):
 				self.func(union_obj,self.args[0],self.args[1],self.args[2],self.args[3])
 			return union_obj
-	#also redefine every fucntion to do the same,
+	#also redefine every function to do the same,
 	# it avoid the user to type '(' and ')' and replace it with '.'
 	def translate(self, x=0.0,y=0.0,z=0.0):
 		self.before.append(ApplyNodeFunc(EasyNode.move, (x,y,z)))
