@@ -356,7 +356,7 @@ class EasyNode:
 		myMat.rotateZ(z*math.pi/180)
 		self.obj.Placement=FreeCAD.Placement(myMat).multiply(self.obj.Placement)
 		return self
-	def scale(self, x=0,y=0,z=0):
+	def scale(self, x=0,y=0,z=0,_instantly=False):
 		self.actions_after.append((self.scale_action,(x,y,z)))
 		self.simple = False
 		return self
@@ -1079,6 +1079,183 @@ def polyhedron_wip(points=[], faces=[],center=None,name=None):
 			idx+=1
 	node.add(shapes)
 	return node
+	
+
+def _center_point(points=[]):
+	center = [0.0,0.0,0.0]
+	for flpoint in points:
+		center[0] += flpoint[0]
+		center[1] += flpoint[1]
+		center[2] += flpoint[2]
+	return Base.Vector(center[0]/len(points),center[1]/len(points),center[2]/len(points))
+
+def _calc_angle_3D(v1,v2,norm_approx):
+	# dot = x1*x2 + y1*y2      # dot product
+	# det = x1*y2 - y1*x2      # determinant
+	det = 0
+	vdet = v1.cross(v2)
+	if(norm_approx.dot(vdet)<0):
+		det = -vdet.Length
+	else:
+		det = vdet.Length
+	#det = v1.x*v2.y - v1.y*v2.x
+	# print("atan2",det, v1.dot(v2), v1.cross(v2))
+	angle = math.atan2(det, v1.dot(v2))  # atan2(y, x) or atan2(sin, cos)
+	if(angle<0):
+		angle = angle + math.pi*2
+	return angle
+def _calc_angle_3D_spec(id1, id2, pref, p1, p2, pcenter, vn):
+	angle2=0
+	if(id2<0):
+		angle2 = _calc_angle_3D(pref-pcenter, p2-pcenter, vn) - math.pi*2
+	elif(id2>0):
+		angle2 = _calc_angle_3D(pref-pcenter, p2-pcenter, vn)
+	if(angle2!=0):
+		return angle2
+	else:
+		angle1=0
+		if(id1<0):
+			angle1 = _calc_angle_3D(pref-pcenter, p1-pcenter, vn) - math.pi*2
+		elif(id1>0):
+			angle1 = _calc_angle_3D(pref-pcenter, p1-pcenter, vn)
+		
+		return angle1
+def _create_geometry_slices(points = [], centers=[]):
+	print(len(points), len(centers))
+	#first layer: connect them with center
+	rPoints = []
+	centersP=[]
+	rPoints.append([])
+	for flpoint in points[0]:
+		rPoints[0].append(Base.Vector(flpoint[0],flpoint[1],flpoint[2]))
+		# Draft.makePoint(flpoint[0],flpoint[1],flpoint[2])
+	if(len(centers)==0):
+		centersP.append(_center_point(points[0]))
+		print("new center 0 : ",centersP[0])
+	else:
+		centersP.append(Base.Vector(centers[0]))
+		print("get center 0 : ",centersP[0])
+	# Draft.makePoint(centersP[0])
+	faces=[]
+	if(len(points[0])>3):
+		face = Part.Face(Part.makePolygon([centersP[0],rPoints[0][len(rPoints[0])-1], rPoints[0][0] ],True))
+		faces.append(face)
+		# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+		# obj.Shape = face
+		print(faces)
+		for idp in range(1,len(rPoints[0])):
+			face = Part.Face(Part.makePolygon([centersP[0],rPoints[0][idp-1], rPoints[0][idp] ],True))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+	elif(len(points[0])==3):
+		face = Part.Face(Part.makePolygon([rPoints[0][0],rPoints[0][1], rPoints[0][2] ],True))
+		faces.append(face)
+		
+	nbLayers = len(points)
+	for numlayer in range(1,nbLayers):
+		print(numlayer)
+		rPoints.append([])
+		if(len(centers)<=numlayer):
+			centersP.append(_center_point(points[numlayer]))
+			# print("new center "+str(numlayer)+" : ",centersP[numlayer])
+		else:
+			centersP.append(Base.Vector(centers[numlayer]))
+			# print("get center "+str(numlayer)+" : ",centersP[numlayer], centers[numlayer])
+		# Draft.makePoint(centersP[numlayer])
+		for flpoint in points[numlayer]:
+			rPoints[numlayer].append(Base.Vector(flpoint[0],flpoint[1],flpoint[2]))
+		id_bot = len(rPoints[numlayer-1])-1
+		point_bot = rPoints[numlayer-1][id_bot]
+		id_top = len(rPoints[numlayer])-1
+		point_top = rPoints[numlayer][id_top]
+		id_bot = -1 if(id_bot>0) else 0
+		id_top = -1 if(id_top>0) else 0
+		while(id_bot<len(rPoints[numlayer-1])-1 and id_top<len(rPoints[numlayer])-1):
+			# print(point_bot, rPoints[numlayer-1][id_bot+1], )
+			# print(_calc_angle_3D_spec(id_bot, id_bot+1, rPoints[numlayer-1][0], point_bot, rPoints[numlayer-1][id_bot+1], centersP[numlayer-1], centersP[numlayer]-centersP[numlayer-1])
+				# , _calc_angle_3D_spec(id_top, id_top+1, rPoints[numlayer][0], point_top, rPoints[numlayer][id_top+1], centersP[numlayer], centersP[numlayer]-centersP[numlayer-1]))
+			anglebot = _calc_angle_3D_spec(id_bot, id_bot+1, rPoints[numlayer-1][0], point_bot, rPoints[numlayer-1][id_bot+1], centersP[numlayer-1], centersP[numlayer]-centersP[numlayer-1])
+			angletop = _calc_angle_3D_spec(id_top, id_top+1, rPoints[numlayer][0], point_top, rPoints[numlayer][id_top+1], centersP[numlayer], centersP[numlayer]-centersP[numlayer-1])
+			if( anglebot > angletop or (anglebot == angletop and len(rPoints[numlayer])<len(rPoints[numlayer-1])) ):
+				# print("face top ",id_bot, id_top, id_bot, id_top+1, len(rPoints[numlayer-1]), len(rPoints[numlayer]), point_bot, point_top, rPoints[numlayer][id_top+1])
+				face = (Part.Face(Part.makePolygon([point_bot, point_top, rPoints[numlayer][id_top+1] ],True)))
+				faces.append(face)
+				# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+				# obj.Shape = face
+				id_top += 1
+				point_top = rPoints[numlayer][id_top]
+			else:
+				# print("face bot ",id_bot, id_top, id_bot+1, id_top, len(rPoints[numlayer-1]), len(rPoints[numlayer]), point_bot, point_top, rPoints[numlayer-1][id_bot+1])
+				face = (Part.Face(Part.makePolygon([point_bot, point_top, rPoints[numlayer-1][id_bot+1] ],True)))
+				faces.append(face)
+				# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+				# obj.Shape = face
+				id_bot += 1
+				point_bot = rPoints[numlayer-1][id_bot]
+		while(id_bot<len(rPoints[numlayer-1])-1):
+			# print("last face bot ",id_bot, id_top, id_bot+1, id_top, len(rPoints[numlayer-1]), len(rPoints[numlayer]), point_bot, point_top, rPoints[numlayer-1][id_bot+1])
+			face = (Part.Face(Part.makePolygon([point_bot, point_top, rPoints[numlayer-1][id_bot+1] ],True)))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+			id_bot += 1
+			point_bot = rPoints[numlayer-1][id_bot]
+		while(id_top<len(rPoints[numlayer])-1):
+			# print("last face top ",id_bot, id_top, id_bot, id_top+1, len(rPoints[numlayer-1]), len(rPoints[numlayer]), point_bot, point_top, rPoints[numlayer][id_top+1])
+			face = (Part.Face(Part.makePolygon([point_bot, point_top, rPoints[numlayer][id_top+1] ],True)))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+			id_top += 1
+			point_top = rPoints[numlayer][id_top]
+	#close top
+	if(len(points[nbLayers-1])>3):
+		face = Part.Face(Part.makePolygon([centersP[nbLayers-1],rPoints[nbLayers-1][len(rPoints[nbLayers-1])-1], rPoints[nbLayers-1][0] ],True))
+		faces.append(face)
+		# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+		# obj.Shape = face
+		for idp in range(1,len(rPoints[nbLayers-1])):
+			face = Part.Face(Part.makePolygon([centersP[nbLayers-1],rPoints[nbLayers-1][idp-1], rPoints[nbLayers-1][idp] ],True))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+	elif(len(points[0])==3):
+		face = Part.Face(Part.makePolygon([rPoints[nbLayers-1][0],rPoints[nbLayers-1][1], rPoints[nbLayers-1][2] ],True))
+		faces.append(face)
+		
+	# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+	# obj.Shape = Part.Solid(Part.Shell(faces))
+	# obj.Shape = (Part.Shell(faces))
+	return Part.Solid(Part.Shell(faces))
+_default_size=1
+def solid_slices(points=[],centers=[],center=None,name=None):
+	if(len(points)<2):
+		return sphere(_default_size)
+	global _idx_EasyNode
+	node = EasyNodeLeaf()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "solid_slices_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	def createSolidSlices(node, points, centers, center):
+		print("centersA=",len(centers))
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+		try:
+			node.obj.Shape = _create_geometry_slices(points, centers)
+			pcenter = _center_point(points[0])
+			node.centerx = pcenter.x
+			node.centery = pcenter.y
+			node.centerz = (_center_point(points[len(points)-1]).z-pcenter.z)/2.0
+			useCenter(node, center)
+		except:
+			node.obj.Shape = Part.makeSphere(_default_size)
+			node.centerx = 0.0
+			node.centery = 0.0
+			node.centerz = 0.0
+	node.addAction(createSolidSlices, (node, points, list(centers), center))
+	return node
 
 ######### 2D & 1D objects ######### 
 
@@ -1733,9 +1910,11 @@ class ApplyNodeFunc():
 	def poly_ext(self,r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
 		return self(poly_ext(r, nb, h,center,d,name))
 	def polyhedron(self,points=[],faces=[],center=None,name=None):
-		return self(polyhedron(r, points, faces,center,name))
+		return self(polyhedron(points, faces,center,name))
 	def polyhedron_wip(self,points=[],faces=[],center=None,name=None):
-		return self(polyhedron_wip(r, points, faces,center,name))
+		return self(polyhedron_wip(points, faces,center,name))
+	def solid_slices(self,points=[],centers=[],center=None,name=None):
+		return self(solid_slices(points, centers,center,name))
 	def createPolyExt(self,node, r,nb,h,center):
 		return self(createPolyExt(node, r,nb,h,center))
 	def poly_int(self,a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
