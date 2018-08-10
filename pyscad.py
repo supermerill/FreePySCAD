@@ -2029,21 +2029,35 @@ def importStl(filename=";/None.stl",ids=[],name=None):
 			objects_inserted.remove(obj)
 		if(len(ids)==0):
 			if(len(objects_inserted)==1):
-				node.obj = objects_inserted[0]
+				shape = Part.Shape()
+				shape.makeShapeFromMesh(objects_inserted[0].Mesh.Topology,0.05)
+				node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+				node.obj.Shape = Part.makeSolid(shape)
 			else:
 				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
-				for obj in objects_inserted:
-					node(_easyNodeStub(obj,"stl"))
+				for mesh in objects_inserted:
+					shape = Part.Shape()
+					shape.makeShapeFromMesh(mesh.Mesh.Topology,0.05)
+					obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+					obj.Shape = Part.makeSolid(shape)
+					node(_easyNodeStub(obj),"stl")
 		else:
 			to_unionise = []
 			for idx in ids:
 				if(idx<len(objects_inserted)):
 					to_unionise.append(objects_inserted[idx])
 			if(len(to_unionise)==1):
-				node.obj = to_unionise[0]
+				shape = Part.Shape()
+				shape.makeShapeFromMesh(to_unionise[0].Mesh.Topology,0.05)
+				node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+				node.obj.Shape = Part.makeSolid(shape)
 			else:
 				node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse", "union_"+str(_idx_EasyNode))
-				for obj in to_unionise:
+				for mesh in to_unionise:
+					shape = Part.Shape()
+					shape.makeShapeFromMesh(mesh.Mesh.Topology,0.05)
+					obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+					obj.Shape = Part.makeSolid(shape)
 					node(_easyNodeStub(obj,"stl"))
 	node.addAction(importStl_action, (filename,ids))
 	return node	
