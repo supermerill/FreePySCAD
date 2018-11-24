@@ -507,6 +507,16 @@ class EasyNodeUnion(EasyNode):
 			newObj.Placement = Base.Placement(self.obj.Placement)
 			FreeCAD.ActiveDocument.removeObject(self.obj.Name)
 			self.obj = newObj
+		else:
+			arrayShape = self.obj.Shapes
+			for enode in tupleOfNodes :
+				if(isinstance(enode, EasyNode)):
+					arrayShape.append(enode.obj)
+					enode.obj.ViewObject.Visibility = False
+				else:
+					print("error, trying to layout '"+str(enode)+"' into a union of EsayNode")
+			self.obj.Shapes = arrayShape
+		return self
 
 def union(name=None):
 	global _idx_EasyNode
@@ -846,13 +856,13 @@ def tri_rect(x=_default_size,y=_default_size,z=_default_size,center=None, name=N
 	node.addAction(createTriRect, (node, x,y,z,center))
 	return node
 
-def cylinder(r=0.0,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
+def cylinder(r=_default_size,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
 	r = abs(r)
 	h = abs(h)
 	d = abs(d)
-	if( r == 0.0 and d != 0.0):
+	if( r == _default_size and d != 0.0):
 		r = d/2.0
-	if(r == 0.0 and (r1!=0.0 or r2!=0.0 or d1!=0.0 or d2!=0.0)):
+	if(r == _default_size and (r1!=0.0 or r2!=0.0 or d1!=0.0 or d2!=0.0)):
 		return cone(r1,r2,h,center,d1,d2,fn)
 	if(fn>2):
 		return poly_ext(r,fn,center)
@@ -876,15 +886,15 @@ def cylinder(r=0.0,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0
 	node.addAction(createCylinder, (node, r,h,center,angle))
 	return node
 
-def cone(r1=_default_size,r2=_default_size,h=_default_size,center=None,d1=0.0,d2=0.0,fn=1,name=None):
+def cone(r1=_default_size*2,r2=_default_size,h=_default_size,center=None,d1=0.0,d2=0.0,fn=1,name=None):
 	r1 = abs(r1)
 	r2 = abs(r2)
 	h = abs(h)
 	d1 = abs(d1)
-	if( r1 == 0.0 and d1 != 0.0):
+	if( r1 == _default_size*2 and d1 != 0.0):
 		r1 = d1/2.0
 	d2 = abs(d2)
-	if( r2 == 0.0 and d2 != 0.0):
+	if( r2 == _default_size and d2 != 0.0):
 		r2 = d2/2.0
 	print("cone: "+str(r1)+" "+str(r2)+" "+str(h)+" "+str(fn)+" ")
 	if(fn>2):
@@ -1257,6 +1267,154 @@ def solid_slices(points=[],centers=[],center=None,name=None):
 	node.addAction(createSolidSlices, (node, points, list(centers), center))
 	return node
 
+thread_pattern_triangle = [[0,0],[1,1],[0,1]]
+thread_pattern_iso_internal = [[0,0],[0,0.125],[1,0.4375],[1,0.6875],[0,1]]
+# 375 -> -625 -> 312.5
+thread_pattern_iso_external = [[0,0],[0,0.250],[1,0.5625],[1,0.6875],[0,1]]
+def thread(r=_default_size,p=_default_size,nb=_default_size,r2=_default_size*1.5, pattern=[[0,0],[1,0.5],[0,1]],fn=8,center=None,name=None):
+	#check pattern
+	if(len(pattern)<1):
+		return sphere(1)
+	#check if begin in (0,0)
+	if(pattern[0][0] !=0 or pattern[0][1] != 0):
+		pattern.insert(0,[0,0])
+	#check if return to x=0 line
+	if(pattern[len(pattern)-1][0] !=0):
+		pattern.append([0,1])
+	if(nb<1):
+		nb = 1
+		
+	#create node
+	global _idx_EasyNode
+	node = EasyNodeLeaf()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "thread_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	
+	#def construct
+	def createThread(node, r, p, nb, r2, pattern,fn, center):
+		maxXpat = 0.0
+		for ppat in pattern:
+			maxXpat = max(ppat[0], maxXpat)
+		scalex = (r2-r)/float(maxXpat)
+		scaley = p/pattern[len(pattern)-1][1]
+		#make
+		faces = []
+		pattVect = []
+		for pattp in pattern:
+			pattVect.append(Base.Vector(r+pattp[0]*scalex,0,pattp[1]*scaley))
+		previousLine = []
+		
+		#init
+		zoffsetIncr = p/float(fn)
+		zoffset = -p
+		#iterations
+		rotater = Base.Rotation()
+		rotater.Axis = Base.Vector(0,0,1)
+		rotater.Angle = (math.pi*2.0/fn)*(-1)
+		for pattp in pattVect:
+			tempvec = rotater.multVec(pattp)
+			tempvec.z += zoffset
+			previousLine.append(tempvec)
+			
+		#closing faces
+		rotater.Angle = (math.pi*2.0/fn)*(-2)
+		closevec = rotater.multVec(pattp)
+		closevec.z += zoffset - zoffsetIncr
+		for id in range(1,len(pattVect)):
+			face = Part.Face(Part.makePolygon([previousLine[id-1], closevec, previousLine[id] ],True))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+		middlevec = Base.Vector(0,0,-p)
+		for step in range(0,fn):
+			rotater.Angle = (math.pi*2.0/fn)*(step-1)
+			nextclosevec = rotater.multVec(pattp)
+			nextclosevec.z += zoffset -p + zoffsetIncr * step 
+			face = Part.Face(Part.makePolygon([closevec, middlevec, nextclosevec ],True))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+			closevec = nextclosevec
+			
+		#iterate
+		for turn in range(0,nb):
+			for step in range(0,fn):
+				zoffset += zoffsetIncr
+				rotater.Angle = (math.pi*2.0/fn)*step
+				nextLine = []
+				for pattp in pattVect:
+					tempvec = rotater.multVec(pattp)
+					tempvec.z += zoffset
+					nextLine.append(tempvec)
+				for id in range(1,len(pattVect)):
+					# face = Part.Face(Part.makePolygon([previousLine[id-1],nextLine[id-1], nextLine[id], previousLine[id] ],True))
+					face = Part.Face(Part.makePolygon([previousLine[id-1],nextLine[id-1], previousLine[id] ],True))
+					faces.append(face)
+					# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+					# obj.Shape = face
+					face = Part.Face(Part.makePolygon([nextLine[id-1], nextLine[id], previousLine[id] ],True))
+					faces.append(face)
+					# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+					# obj.Shape = face
+				previousLine = nextLine
+		
+		#closing faces
+		rotater.Angle = (math.pi*2.0/fn)*(0)
+		closevec = rotater.multVec(pattp)
+		closevec.z += zoffset -p + zoffsetIncr
+		for id in range(1,len(pattVect)):
+			face = Part.Face(Part.makePolygon([previousLine[id-1], closevec, previousLine[id] ],True))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+		middlevec = Base.Vector(0,0,(nb)*p)
+		rotater.Angle = (math.pi*2.0/fn)*(-1)
+		nextvec = rotater.multVec(pattp)
+		nextvec.z += zoffset + zoffsetIncr
+		face = Part.Face(Part.makePolygon([closevec, middlevec, previousLine[id] ],True))
+		faces.append(face)
+		# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+		# obj.Shape = face
+		for step in range(0,fn-1):
+			rotater.Angle = (math.pi*2.0/fn)*(step+1)
+			nextclosevec = rotater.multVec(pattp)
+			nextclosevec.z += zoffset - p + zoffsetIncr * (step+2)
+			face = Part.Face(Part.makePolygon([closevec, middlevec, nextclosevec ],True))
+			faces.append(face)
+			# obj = FreeCAD.ActiveDocument.addObject("Part::Feature", "obj_"+str(_idx_EasyNode))
+			# obj.Shape = face
+			closevec = nextclosevec
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::Feature", node.name)
+		node.obj.Shape = Part.Solid(Part.Shell(faces))
+		print(node.obj)
+	
+		node.centerx = -r
+		node.centery = -r
+		node.centerz = p*(nb-1)/2.0
+		useCenter(node, center)
+		
+	node.addAction(createThread, (node, r, p, nb, r2, pattern,fn, center))
+	return node
+
+def iso_thread(d=1,p=0.25, h=1,internal = False, offset=0.0,name=None, fn=15):
+	my_pattern = [[0,0],[0,0.250],[1,0.5625],[1,0.6875],[0,1]]
+	if(internal):
+		my_pattern = [[0,0],[0,0.125],[1,0.4375],[1,0.6875],[0,1]]
+	# if(offset!=0):
+	my_pattern[1][1] = my_pattern[1][1]+offset*2
+	my_pattern[2][1] = my_pattern[2][1]+offset*2
+	print("internal?", internal, my_pattern)
+	rOffset = 0.866*p*5/8.0
+	rMax = d/2.0
+	return cut(name=name)(
+		thread(r=rMax-rOffset, r2=rMax, p=p, nb=int(h/p +2),fn=fn, pattern = my_pattern).move(z= -offset/2.0),
+		cube(3*d,3*d,3*p).xy().move(z= -3*p),
+		cube(3*d,3*d,4*p).xy().move(z=h),
+	)
+	
 ######### 2D & 1D objects ######### 
 
 class EasyNode2D(EasyNodeLeaf):
