@@ -9,7 +9,8 @@ note: it's in an alpha stage right now. You can use it but some things may not w
 FreePySCAD is a python library for FreeCAD to let user write their code in a text editor and see the result after a "compilation" process, like OpenSCAD but in FreeCAD.  
 To install the library, clone the github repository into the "FreeCAD X.xx/mod" directory  
 To write your code, you can open the FreeCAD macro editor and beginning your macro with "from FreePySCAD.FreePySCAD import *"   
-You can also type in the python console "execfile('path_to/my_pycad.py')", this has the advantage to show the errors.
+You can also type in the python console "execfile('path_to/my_pycad.py')", this has the advantage to show the errors.  
+The geometry passed inside the scene().redraw(...) function will be added inside the current document, replacing everything.
 ## what's different
 The braces are replaced with parenthesis  
 The ';' are replaced with ',' and you also have to place it after ')' if no other ')' are directly after that to respect the python syntax.  
@@ -40,13 +41,11 @@ Here is a working ugly example:
 	T_10cube = make_T(10,10)
 	w=3
 	T_3cube = make_T(10,10)
-	scene().show(
+	scene().redraw(
 		T_10cube,
 		T_3cube.move(12),
 	)
-You also have to pass your objects inside the scene.show() function to put it into the FreeCAD environment.
-This function do the work of recreating only the node that need a redraw and don't touch the objects you may have added manually into FreeCAD. 
-
+You also have to pass your objects inside the scene.redraw() function to put it into the FreeCAD environment.
 ## FreePySCAD cheatsheet:
 
 #### 1D:
@@ -90,7 +89,9 @@ note: most of these transformations can only work on a single object, as these c
 * poly_ext(r,nb,h) # r = radius, nb = nb vertex (min 3)  
 * poly_int(a,nb,h) # a = apothem, nb = nb vertex (min 3)  
 * polyhedron(points, faces) # for debugging use polyhedron_wip : it creates a group of points & faces instead of a 3D solid mesh  
-* solid_slices(points, centers) #new way to create complicated shells, see below. centers are optional. Much simpler than polyhedron.
+* solid_slices(points, centers) #new way to create not-so complicated shells, see below. centers are optional. Much simpler than polyhedron. May not work with not-convex shapes.
+* thread(r,p,nb,r2, pattern,fn,center) # implementation of a way to create threads, with pattern (2D array of points). It creates a new 3D object from triangles (vertexes & faces).
+* iso_thread(d,p,h,internal,offset,fn) # usage of thread method with an iso pattern.
 
 #### 3D Boolean operations:
 * union()(...3D) | union().add(...3D) # can work with 2D  
