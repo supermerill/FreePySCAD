@@ -1013,8 +1013,9 @@ def poly_int(a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None)
 	if( a == 0.0 and d != 0.0):
 		a = d/2.0
 	# create polygon with apothem, not radius
-	radius = a * math.cos(math.radians(180)/nb)
-	return poly_ext(radius,nb,h,center,name)
+	print "lol"
+	radius = a / math.cos(math.radians(180)/nb)
+	return poly_ext(radius,nb,h,center,name=name)
 
 def polyhedron(points=[], faces=[],center=None,name=None):
 	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<2):
