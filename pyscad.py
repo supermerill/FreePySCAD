@@ -860,9 +860,9 @@ def cylinder(r=_default_size,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=
 	r = abs(r)
 	h = abs(h)
 	d = abs(d)
-	if( r == _default_size and d != 0.0):
+	if( (r == _default_size or r == 0) and d != 0.0):
 		r = d/2.0
-	if(r == _default_size and (r1!=0.0 or r2!=0.0 or d1!=0.0 or d2!=0.0)):
+	if( (r == _default_size or r == 0) and (r1!=0.0 or r2!=0.0 or d1!=0.0 or d2!=0.0)):
 		return cone(r1,r2,h,center,d1,d2,fn)
 	if(fn>2):
 		return poly_ext(r,fn,center)
@@ -891,12 +891,11 @@ def cone(r1=_default_size*2,r2=_default_size,h=_default_size,center=None,d1=0.0,
 	r2 = abs(r2)
 	h = abs(h)
 	d1 = abs(d1)
-	if( r1 == _default_size*2 and d1 != 0.0):
+	if( (r1 == _default_size*2 or r1 == 0) and d1 != 0.0):
 		r1 = d1/2.0
 	d2 = abs(d2)
-	if( r2 == _default_size and d2 != 0.0):
+	if( (r2 == _default_size or r2 == 0) and d2 != 0.0):
 		r2 = d2/2.0
-	print("cone: "+str(r1)+" "+str(r2)+" "+str(h)+" "+str(fn)+" ")
 	if(fn>2):
 		#compute extrusion angle
 		angle = 0.0
@@ -904,7 +903,7 @@ def cone(r1=_default_size*2,r2=_default_size,h=_default_size,center=None,d1=0.0,
 			angle = -math.atan(float(r1-r2)/float(h))
 		else:
 			angle = math.atan(float(r2-r1)/float(h))
-		print(str(r1)+" "+str(fn)+" "+str(angle))
+		#print(str(r1)+" "+str(fn)+" "+str(angle))
 		return z_extrude(length=h,angle=angle)(poly_reg(r1,fn,center=center))
 		# return poly_reg(r1,fn,center=center)
 	global _idx_EasyNode
@@ -927,7 +926,7 @@ def cone(r1=_default_size*2,r2=_default_size,h=_default_size,center=None,d1=0.0,
 def sphere(r=_default_size,center=None,d=0.0,fn=1,name=None):
 	r = abs(r)
 	d = abs(d)
-	if( r == 0.0 and d != 0.0):
+	if( (r == _default_size or r == 0.0) and d != 0.0):
 		r = d/2.0
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
@@ -950,10 +949,10 @@ def torus(r1=_default_size, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
 	r1 = abs(r1)
 	r2 = abs(r2)
 	d1 = abs(d1)
-	if( r1 == 0.0 and d1 != 0.0):
+	if( (r1 == _default_size or r1 == 0.0) and d1 != 0.0):
 		r1 = d1/2.0
 	d2 = abs(d2)
-	if( r2 == 0.0 and d2 != 0.0):
+	if( (r2 == _default_size or r2 == 0.0) and d2 != 0.0):
 		r2 = d2/2.0
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
@@ -978,7 +977,7 @@ def poly_ext(r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None)
 	h = abs(h)
 	nb= max(3, abs(nb))
 	d = abs(d)
-	if( r == 0.0 and d != 0.0):
+	if( (r ==_default_size or r == 0.0) and d != 0.0):
 		r = d/2.0
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
@@ -1010,7 +1009,7 @@ def poly_int(a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None)
 	h = abs(h)
 	nb= max(3, abs(nb))
 	d = abs(d)
-	if( a == 0.0 and d != 0.0):
+	if( (a == _default_size or a == 0.0) and d != 0.0):
 		a = d/2.0
 	# create polygon with apothem, not radius
 	print "lol"
