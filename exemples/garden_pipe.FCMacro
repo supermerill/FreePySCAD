@@ -1,0 +1,139 @@
+from Pyscad.pyscad import *
+# execfile('C:/Program Files/FreeCAD 0.18/Mod/Pyscad/exemples/garden_pipe.FCMacro')
+
+def nounou():
+    return difference()(
+		union()(
+	        cylinder(d1=10,d2=14,h=4),
+	        cylinder(d1=14,d2=12.75,h=1).move(z=4),
+	        cylinder(d=12.75,h=15).move(z=5),
+			cylinder(r=6.5,h=68).z().rotate(x=90).move(z=20),
+			cylinder(d1=7,d2=4,h=03).move(y=10,z=24),
+			cylinder(d1=7,d2=4,h=03).move(y=-10,z=24),
+			cylinder(d1=7,d2=4,h=03).move(y=30,z=24),
+			cylinder(d1=7,d2=4,h=03).move(y=-30,z=24),
+			cylinder(d=4,h=5).move(y=10,z=25),
+			cylinder(d=4,h=5).move(y=-10,z=25),
+			cylinder(d=4,h=5).move(y=30,z=25),
+			cylinder(d=4,h=5).move(y=-30,z=25),
+			cylinder(d1=4,d2=3,h=05).move(y=10,z=30),
+			cylinder(d1=4,d2=3,h=05).move(y=-10,z=30),
+			cylinder(d1=4,d2=3,h=05).move(y=30,z=30),
+			cylinder(d1=4,d2=3,h=05).move(y=-30,z=30),
+			sphere(r=2.5).move(y=-30,z=30),
+			sphere(r=2.5).move(y=-10,z=30),
+			sphere(r=2.5).move(y=10,z=30),
+			sphere(r=2.5).move(y=30,z=30),
+			cut()(cube(0.5,70,13.4).xy(),cube(1,14,13.9).xy()),
+			cube(4,0.5,13.4).xy().move(y=-30),
+			cube(4,0.5,13.4).xy().move(y=30),
+			cube(4,0.5,13.4).xy().move(y=-10),
+			cube(4,0.5,13.4).xy().move(y=10),
+		),
+		cylinder(r=4,h=20),
+		cylinder(r=4,h=64).z().rotate(x=90).move(z=20),
+		cylinder(d=1.5,h=20).move(y=10,z=20),
+		cylinder(d=1.5,h=20).move(y=-10,z=20),
+		cylinder(d=1.5,h=20).move(y=30,z=20),
+		cylinder(d=1.5,h=20).move(y=-30,z=20),
+	);
+#);
+
+#	return difference()(
+#    union()(
+#        cylinder(d1=10,d2=13.5,h=4),
+#        cylinder(d1=13.5,d2=12.75,h=1).move(z=4),
+#        cylinder(d=12.75,h=16).move(z=5),
+#    ),
+
+
+def nounou2():
+    return difference()(
+		union()(
+	        cylinder(d1=3,d2=4,h=5).move(z=0),
+			sphere(r=2.5).move(z=5),
+	        cylinder(d=4,h=5).move(z=5),
+			cylinder(d1=4,d2=7,h=03).move(z=8),
+			union()(
+				cylinder(r=6.5,h=68).z().rotate(x=90).move(z=20),
+				cylinder(d1=7,d2=4,h=03).move(y=10,z=24),
+				cylinder(d1=7,d2=4,h=03).move(y=-10,z=24),
+				cylinder(d1=7,d2=4,h=03).move(y=30,z=24),
+				cylinder(d1=7,d2=4,h=03).move(y=-30,z=24),
+				cylinder(d=4,h=5).move(y=10,z=25),
+				cylinder(d=4,h=5).move(y=-10,z=25),
+				cylinder(d=4,h=5).move(y=30,z=25),
+				cylinder(d=4,h=5).move(y=-30,z=25),
+				cylinder(d1=4,d2=3,h=05).move(y=10,z=30),
+				cylinder(d1=4,d2=3,h=05).move(y=-10,z=30),
+				cylinder(d1=4,d2=3,h=05).move(y=30,z=30),
+				cylinder(d1=4,d2=3,h=05).move(y=-30,z=30),
+				sphere(r=2.5).move(y=-30,z=30),
+				sphere(r=2.5).move(y=-10,z=30),
+				sphere(r=2.5).move(y=10,z=30),
+				sphere(r=2.5).move(y=30,z=30),
+			).move(z=-5),
+			cut()(cube(0.5,70,8.4).xy(),cube(1,14,13.9).xy()),
+			cube(4,0.5,8.4).xy().move(y=-30),
+			cube(4,0.5,8.4).xy().move(y=30),
+			cube(4,0.5,8.4).xy().move(y=-10),
+			cube(4,0.5,8.4).xy().move(y=10),
+		),
+		cylinder(d=1.5,h=20),
+		cylinder(r=4,h=64).z().rotate(x=90).move(z=15),
+		cylinder(d=1.5,h=20).move(y=10,z=15),
+		cylinder(d=1.5,h=20).move(y=-10,z=15),
+		cylinder(d=1.5,h=20).move(y=30,z=15),
+		cylinder(d=1.5,h=20).move(y=-30,z=15),
+	);
+
+def goutte():
+	return cut()(
+	union()(
+		cone(d1=1,d2=10,h=60),
+		cylinder(d=10,h=20).move(z=60),
+		poly_ext(d=16,h=5,nb=6).move(z=75),
+	),
+	cylinder(d=6,h=40).z().rotate(x=90).move(z=74),
+	cylinder(d=4,h=2).z().move(z=72),
+	iso_thread(d=4.2,p=0.5,h=5,internal=True,offset=0.1).move(z=75),
+#	iso_thread(d=3.1,p=0.35,h=5,internal=True,offset=0.1).move(z=75),
+)
+
+def coude():
+	return cut()(
+	union()(
+		gardena_joint(),
+		gardena_joint().rotate(x=90).move(y=25,z=25),
+		sphere(r=8).move(z=25),
+	),
+	cylinder(d=8,h=20),
+	cylinder(d=8,h=20).rotate(x=90).move(y=25,z=25),
+	cylinder(d1=8,d2=3,h=6.5).move(z=20),
+	cylinder(d1=8,d2=3,h=6.5).move(z=20).rotate(x=90).move(y=25,z=25),
+)
+
+def gardena_joint():
+	return cut()(
+	union()(
+	        cylinder(d1=10,d2=14,h=4),
+	        cylinder(d1=14,d2=12.75,h=1).move(z=4),
+	        cylinder(d=12.75,h=15).move(z=5),
+	),
+	cylinder(d=8,h=20),
+)
+
+scene().redraw(
+# draw a tip that drop droplets (with a thread for a bolt)
+#goutte(),
+
+# draw a feeder
+# nounou(),
+# nounou2(),
+
+# draw a 90° angle
+#cut()(
+#	coude().rotate(x=180-45).move(y=10,z=22),
+#	cube(50,50,50).xyz().z(),
+#),
+)

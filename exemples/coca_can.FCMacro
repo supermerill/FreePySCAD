@@ -1,0 +1,131 @@
+from Pyscad.pyscad import *
+# execfile('C:/Program Files/FreeCAD 0.18/Mod/Pyscad/exemples/coca_can.FCMacro')
+
+rayon = 1;
+decalR = 0.2;
+decalL = 0.3;
+length = 4;
+
+thin_top = 0.04
+thin_size = 0.05
+thick_top = 0.12
+thick_size = 0.1
+
+top_rayon = rayon-thick_top-decalR;
+top_epp = 0.05;
+
+canette_base = rotate_extrude(360)(
+union()(
+	polygon([[-length/2,rayon-decalR],[-length/2,0],[length/2,0],[length/2,rayon-decalR]],False),
+#	line([-1,1], [0,1]),
+	bezier([[-length/2, rayon-decalR],[-length/2+decalL*2/3, rayon-decalR],[-length/2+decalL, rayon]],False),
+	bezier([[length/2, rayon-decalR],[length/2-decalL*2/3, rayon-decalR],[length/2-decalL, rayon]],False),
+	line([-length/2+decalL, rayon], [length/2-decalL, rayon]),
+).rotate(z=90));
+
+
+cannette_withtopcut = cut()(
+canette_base.move(y=-length/2),
+cylinder(r=rayon-thin_top-decalR,h=10).move(z=-thin_size),
+cylinder(r=rayon-thick_top-decalR,h=20).move(z=-thick_size),
+);
+
+bombed_top = rotate_extrude(360)(
+union()(
+bezier([[top_rayon, 0], [top_rayon,top_epp], [0,top_epp]]),
+polygon([[0,top_epp],[0,-1],[top_rayon,-1],[top_rayon, 0]],False),
+));
+
+ncl = rayon/4.0;
+nice_capsule = cut()(
+create_wire(True)(
+bezier([[-ncl,0],[-ncl,ncl],[0,ncl]]),
+bezier([[ncl,0],[ncl,ncl],[0,ncl]]),
+line([-ncl,0],[-ncl,-ncl*1.3]),
+line([ncl,0],[ncl,-ncl*1.3]),
+bezier([[-ncl,-ncl*1.3],[-ncl,-ncl*2],[-ncl*0.2,-ncl*2.3],[0,-ncl*2.3]]),
+bezier([[ncl,-ncl*1.3],[ncl,-ncl*2],[ncl*0.2,-ncl*2.3],[0,-ncl*2.3]]),
+),
+create_wire(True)(
+bezier([[-ncl*0.7,ncl*0.1],[-ncl*0.7,ncl*0.7],[0,ncl*0.7]]),
+bezier([[ncl*0.7,ncl*0.1],[ncl*0.7,ncl*0.7],[0,ncl*0.7]]),
+bezier([[-ncl*0.7,ncl*0.1],[-ncl*0.7,-ncl*0.3],[-ncl*0.3,-ncl*0.3]]),
+bezier([[ncl*0.7,ncl*0.1],[ncl*0.7,-ncl*0.3],[ncl*0.3,-ncl*0.3]]),
+line([-ncl*0.3,-ncl*0.3],[ncl*0.3,-ncl*0.3])
+),
+
+#create_wire(True)(
+#bezier([[-ncl*0.6,-ncl*1.3],[-ncl*0.6,-ncl],[-ncl*0.4,-ncl*0.5],[0,-ncl*0.5]]),
+#bezier([[ncl*0.6,-ncl*1.3],[ncl*0.6,-ncl],[ncl*0.4,-ncl*0.5],[0,-ncl*0.5]]),
+#bezier([[-ncl*0.6,-ncl*1.3],[-ncl*0.6,-ncl*1.5],[-ncl*0.4,-ncl*1.5]]),
+#bezier([[ncl*0.6,-ncl*1.3],[ncl*0.6,-ncl*1.5],[ncl*0.4,-ncl*1.5]]),
+#bezier([[-ncl*0.4,-ncl*1.5],[-ncl*0.2,-ncl*1.5],[0,-ncl*1.4],[ncl*0.2,-ncl*1.5],[ncl*0.4,-ncl*1.5]]),
+#),
+create_wire(True)(
+bezier([[-ncl*0.6,-ncl*1.3],[-ncl*0.6,-ncl],[-ncl*0.4,-ncl*0.5],[0,-ncl*0.5]]),
+bezier([[ncl*0.6,-ncl*1.3],[ncl*0.6,-ncl],[ncl*0.4,-ncl*0.5],[0,-ncl*0.5]]),
+bezier([[-ncl*0.6,-ncl*1.3],[-ncl*0.6,-ncl*1.5],[0,-ncl*1.6]]),
+bezier([[ncl*0.6,-ncl*1.3],[ncl*0.6,-ncl*1.5],[0,-ncl*1.6]]),
+),
+
+);
+
+hole_size_big = rayon/2.2;
+hole_size = hole_size_big/2.0;
+hole_thick = hole_size/10.0;
+#hole_thick = 0.1;
+precut_hole = path_extrude()(
+create_wire(False)(
+	bezier([[-hole_size,0],[-hole_size,hole_size_big],[hole_size,hole_size_big],[hole_size,0]]),
+	bezier([[-hole_size,0],[-hole_size,-hole_size_big],[hole_size,-hole_size_big],[hole_size,0]]),
+),
+circle(hole_thick).rotate(90).move(-hole_size)
+);
+
+
+tout = union()(
+cannette_withtopcut.move(z=thin_size),
+cut()(
+	bombed_top,
+	precut_hole.rotate(y=3).move(x=rayon/2.6, z=0.05),
+),
+
+cylinder(r=rayon/8.0,h=0.20).z().move(-rayon/30.0),
+cylinder(r=rayon/40.0,h=0.25).z().move(-rayon/30.0),
+linear_extrude(0.05)(nice_capsule).rotate(z=90,x=4).move(x=-rayon/3.0,z=0.12)
+);
+
+
+marge = 1;
+epp = 0.05;
+
+mold_side = cut()(
+	union()(
+	cannette_withtopcut,
+		cone(0.5,2.5,2).move(z=-0.25),
+		cube((rayon+marge)*2,epp,length+2).x().move(z=-length),
+		cube((rayon+marge)*2, 2,epp).x().y().y().move(z=-length),
+		cube(epp, 2,length+2).x().y().rotate(z=10).y().move(x=(rayon+marge/1.5), z=-length,y=0.05),
+		cube(epp, 2,length+2).x().y().rotate(z=-10).y().move(x=-(rayon+marge/1.5), z=-length,y=0.05),
+	),
+	cone(0.5-epp,2.5-epp,2).move(z=-0.25),
+	cube(10,10,10).xz().move(y=epp),
+	cube(10,10,10).xy().move(z=1.7),
+	cube(10, 10,length+4).move(0).y().rotate(z=10).move(x=(rayon+marge/1.5-0.14), z=-length-1),
+	cube(10, 10,length+4).move(-10).y().rotate(z=-10).move(x=-(rayon+marge/1.5-0.14), z=-length-1),
+
+);
+
+forme_moule_haut_inter = cone(0.5,2.5,2).move(z=-0.25);
+moule_haut_ext = cut()(cone(0.5+epp,2.5+epp,2).move(z=-0.25),cone(0.5,2.5,2).move(z=-0.25));
+
+scene().redraw(
+# draw the can
+tout
+
+# draw the can mold
+#mold_side
+
+#linear_extrude(0.2)(text("cola", 1, "C:/Program Files/FreeCAD 0.18/data/Mod/TechDraw/Resources/fonts/osifont-lgpl3fe.ttf")),
+
+)

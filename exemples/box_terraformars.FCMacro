@@ -1,0 +1,174 @@
+from Pyscad.pyscad import *
+# execfile('C:/Program Files/FreeCAD 0.18/Mod/Pyscad/exemples/box_terraformars.FCMacro')
+
+ep_fond = 0.4
+
+def carte(h):
+	return cube(67,92,h)
+
+def porte_carte(h):
+	return cut()(
+cube(70,95,h).xy(),
+carte(h).xy().move(z=5),
+cube(80,20,h).xy().move(z=5),
+linear_extrude(70)(polygon([[-40,h-5],[-10,0],[10,0],[40,h-5]])).z().rotate(90,0,90).move(z=5),
+cube(10,20,50).xy().move(-36),
+cube(10,20,50).xy().move(36),
+)
+
+def bol_av(d,l,h1,h2):
+	marge=2
+	div= 5
+	d2=d/2-marge
+	l2=l/2-marge
+	return cut()(
+cube(d,l,h2).xy(),
+	cube(d-marge*2,l-marge*2,h2).xy().move(z=ep_fond+h1),
+	solid_slices([[[d/div,l/div,0],[-d/div,l/div,0],[-d/div,-l/div,0],[d/div,-l/div,0]],
+	[[d2,l2,h1],[0,l2,h1],[-d2,l2,h1],[-d2,0,h1]
+		,[-d2,-l2,h1],[0,-l2,h1],[d2,-l2,h1],[d2,0,h1]]])
+			.move(z=ep_fond),
+#	solid_slices([[[d/5,d/5,0],[-d/5,d/5,0],[-d/5,-d/5,0],[d/5,-d/5,0]],
+#	[[r2,r2,d],[0,r2,d],[-r2,r2,d],[-r2,0,d]
+#		,[-r2,-r2,d],[0,-r2,d],[r2,-r2,d],[r2,0,d]]]),
+#	cube(100),
+)
+
+def bol(d,l,h1,h2):
+	marge=2
+	div= 5
+	d2=d/2-marge
+	l2=l/2-marge
+	return cut()(
+cube(d,l,h2).xy(),
+#cube(d-marge,l-marge,h2).xy().move(z=1),
+#rotate_extrude(180)(ellipse(d,l)).move(z=1),
+rotate_extrude(180)(
+	create_wire(closed=True)(
+		bezier([[0,0,0],[0,d2,0],[l2,d2,0]]),
+		bezier([[l2,d2,0],[l2*2,d2,0],[l2*2,0,0]]),
+		line([0,0,0],[l2*2,0,0])
+	).rotate(z=90)
+).rotate(x=90).move(z=-l2,y=d2),
+#linear_extrude(h2-d2)(ellipse(l2,d2)).move(z=d2),
+linear_extrude(h2-d2)(
+	create_wire(closed=True)(
+		bezier([[-d2,0,0],[-d2,l2,0],[0,l2,0]]),
+		bezier([[0,l2,0],[d2,l2,0],[d2,0,0]]),
+		bezier([[-d2,0,0],[-d2,-l2,0],[0,-l2,0]]),
+		bezier([[0,-l2,0],[d2,-l2,0],[d2,0,0]]),
+	)
+).move(z=d2+(h2-d2))
+)
+
+def bolh():
+	return union()(
+	cube(50+16.6,50,5).xy(),
+	bol(50+16.6,50,30,35).move(z=5),
+)
+
+#boite: 287 x 287
+def boite():
+	return cube(287,287,1)
+ 
+
+
+#paquette: 160x220
+def plaquette():
+	return cube(220,160,2)
+
+def map():
+	return cube(260,220,19)
+
+carteh=48
+cartes = union()(
+#	cube(287,90,5),
+	porte_carte(carteh).move(20+35,47.5),
+	porte_carte(carteh).move(20+35+70+20,47.5),
+	porte_carte(carteh).move(20+35+70+20+70+20,47.5),
+	union()(
+		cube(12,7.5,68),
+		cube(20,7.5,carteh),
+		cube(20,7.5,carteh).move(90),
+		cube(20,7.5,carteh).move(2*90),
+		cube(17,7.5,carteh).move(3*90),
+		cube(12,7.5,68).move(287-12),
+	),
+	union()(
+		cube(12,7.5,68),
+		cube(20,7.5,carteh),
+		cube(20,7.5,carteh).move(90),
+		cube(20,7.5,carteh).move(2*90),
+		cube(17,7.5,carteh).move(3*90),
+		cube(12,7.5,68).move(287-12),
+	).move(y=95-7.5),
+)
+
+monaie = union()(
+	bol(75.,60.,30,40).move(37.5,30+95,0),
+	bol(60,60.,30,40).move(30+75,30+95,0),
+	bol(85.,60.,30,40).move(42.5+75+60,30+95,0),
+)
+
+hexy = 22
+hex = cut()(
+	union()(
+		cube(66,286-95,carteh),
+		cube(66,286-95-115,68).move(y=115),
+		cube(86,286-95-60,40).move(-20,60,0),
+		cube(86,31,68).move(-20,160),
+	),
+	cube(66,220-92,68).move(-12,0,carteh),
+	poly_int(35./2,6,100).move(45,hexy,2),
+	poly_int(35./2,6,100).move(45,hexy+37,2),
+	poly_int(35./2,6,100).move(45,hexy+37*2,2),
+#	poly_int(35./2,6,100).move(45,hexy+37*3,2),
+	poly_int(35./2,6,100).move(45,hexy+37*4,2),
+	poly_int(35./2,6,100).move(12.5,hexy+18.5+37*1,2),
+	poly_int(35./2,6,100).move(12.5,hexy+18.5+37*2,2),
+	poly_int(35./2,6,100).move(12.5,hexy+18.5+37*3,2),
+	cube(20,100,86).move(35,0,2),
+	cube(20,100,86).move(35,140,2),
+	cube(20,145,86).move(2.5,40,2),
+)
+
+scene().redraw(
+# boite().color("red"),
+
+# draw space that will be occiped by maps
+map().move(27/2,2,50),
+# draw space occipied by player cards
+plaquette().color("cyan").move(0,95,43.2),
+
+# draw card holders
+cartes,
+
+# draw coin holders
+# monaie,
+bol(75.,60.,30,40).move(37.5,30+95,0).color("yellow"),
+bol(60,60.,30,40).move(30+75,30+95,0).color(1.,1.,1.),
+bol(85.,60.,30,40).move(42.5+75+60,30+95,0).color(1.,0.3,0.),
+
+# draw player coin holders
+bolh().move(66.6*0.5,95+60+25,0).color("black"),
+bolh().move(66.6*1.5,95+60+25,0).color("blue"),
+bolh().move(66.6*2.5,95+60+25,0).color("green"),
+bolh().move(66.6*0.5,95+60+50+25,0).color("yellow"),
+bolh().move(66.6*1.5,95+60+50+25,0).color("red"),
+bolh().move(66.6*2.5,95+60+50+25,0).color(0.8,0.,0.6),
+
+# draw some box for hexagon thigns
+hex.move(287-67,95),
+
+
+# Back box for the rest
+cut()(
+	cube(200,286-95-60-100,68).move(0,95+60+100),
+	cube(198,284-95-60-100,68).move(1,95+60+100+1,ep_fond),
+),
+
+
+
+)
+
+

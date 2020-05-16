@@ -862,10 +862,16 @@ def cylinder(r=_default_size,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=
 	d = abs(d)
 	if( (r == _default_size or r == 0) and d != 0.0):
 		r = d/2.0
+	if( d1!=0.0 and d1==d2 ):
+		r = d1/2.0
+		d1 = d2 = 0
+	if( r1!=0.0 and r1==r2 ):
+		r = r1
+		r1 = r2 = 0
 	if( (r == _default_size or r == 0) and (r1!=0.0 or r2!=0.0 or d1!=0.0 or d2!=0.0)):
 		return cone(r1,r2,h,center,d1,d2,fn)
 	if(fn>2):
-		return poly_ext(r,fn,center)
+		return poly_ext(r=_default_size, nb=fn, h=h,center=center,d=0.0,name=name)
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
 	_idx_EasyNode += 1
@@ -1012,7 +1018,6 @@ def poly_int(a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None)
 	if( (a == _default_size or a == 0.0) and d != 0.0):
 		a = d/2.0
 	# create polygon with apothem, not radius
-	print "lol"
 	radius = a / math.cos(math.radians(180)/nb)
 	return poly_ext(radius,nb,h,center,name=name)
 

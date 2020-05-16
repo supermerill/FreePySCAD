@@ -4,7 +4,7 @@ You like OpenSCAD but you hate it at the same time?
 You can't work in FreeCAD because don't like wasting your time moving the mouse and clicking?
 FreePySCAD is for you!
 
-note: it's in an alpha stage right now. You can use it but some things may not work as advertised.
+note: it's in an alpha stage right now. You can use it but some things may not work as advertised. Tested against 0.17.
 ## How it work
 FreePySCAD is a python library for FreeCAD to let user write their code in a text editor and see the result after a "compilation" process, like OpenSCAD but in FreeCAD.  
 To install the library, clone the github repository into the "FreeCAD X.xx/mod" directory  
@@ -27,7 +27,7 @@ You can also wrote a more concise code with FreePySCAD if you want (i was tired 
 You can now use functions with real variables that can be changed!  
 Here is a working ugly example:
 
-	from FreePySCAD.FreePySCAD import *
+	from Pyscad.pyscad import *
 	def make_T(l,h):
 		big = cube(l,w,h)
 		l = l/3.0
@@ -46,6 +46,7 @@ Here is a working ugly example:
 		T_3cube.move(12),
 	)
 You also have to pass your objects inside the scene.redraw() function to put it into the FreeCAD environment.
+You can see and execute some complex exemples in the exemple directory
 ## FreePySCAD cheatsheet:
 
 #### 1D:
@@ -83,7 +84,7 @@ note: most of these transformations can only work on a single object, as these c
 * cube(size)  
 * cube(x,y,z) | cube([width,depth,height]) | box(x,y,z) 
 * triangle(x,y,z) | triangle([width,depth,height])  
-* cylinder(r|d,h,fn,angle) #call poly_ext if fn >0
+* cylinder(r|d,h,fn,angle) #will call poly_ext if fn >0
 * cone(r1|d1,r2|d2,h,fn) | cylinder(r1|d1,r2|d2,h,fn)  
 * torus(r1,r2,h)  
 * poly_ext(r,nb,h) # r = radius, nb = nb vertex (min 3)  
