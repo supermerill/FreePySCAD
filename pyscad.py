@@ -326,7 +326,8 @@ class EasyNode:
 		for enode in tupleOfNodes :
 			if(isinstance(enode, EasyNode)):
 				arrayShape.append(enode.obj)
-				enode.obj.ViewObject.Visibility = False
+				if enode.obj.ViewObject is not None:
+					enode.obj.ViewObject.Visibility = False
 			else:
 				print("error, trying to layout '"+str(enode)+"' into a union of EsayNode")
 		self.obj.Shapes = arrayShape
@@ -451,7 +452,8 @@ class EasyNodeColored(EasyNode):
 				self.actions.append((self.color_action,((max(0.0,min(r,1.0)),max(0.0,min(v,1.0)),max(0.0,min(b,1.0)),max(0.0,min(a,1.0))),)))
 		return self
 	def color_action(self, colorcode):
-		self.obj.ViewObject.DiffuseColor = [colorcode]
+		if self.obj.ViewObject is not None:
+			self.obj.ViewObject.DiffuseColor = [colorcode]
 		return self
 def magic_color(node, r=0.0,v=0.0,b=0.0,a=0.0):
 		node.color(r,v,b,a)
@@ -512,7 +514,8 @@ class EasyNodeUnion(EasyNode):
 			for enode in tupleOfNodes :
 				if(isinstance(enode, EasyNode)):
 					arrayShape.append(enode.obj)
-					enode.obj.ViewObject.Visibility = False
+					if enode.obj.ViewObject is not None:
+						enode.obj.ViewObject.Visibility = False
 				else:
 					print("error, trying to layout '"+str(enode)+"' into a union of EsayNode")
 			self.obj.Shapes = arrayShape
@@ -609,11 +612,13 @@ class EasyNodeDiff(EasyNode):
 	def layout_childs(self, *tupleOfNodes):
 		if(self.obj.Base == None and len(tupleOfNodes)>0):
 			self.obj.Base = tupleOfNodes[0].obj
-			tupleOfNodes[0].obj.ViewObject.Visibility = False
+			if tupleOfNodes[0].obj.ViewObject is not None:
+				tupleOfNodes[0].obj.ViewObject.Visibility = False
 			tupleOfNodes = tupleOfNodes[1:]
 		if(self.my_union == None and self.obj.Tool == None and len(tupleOfNodes)>0):
 			self.obj.Tool = tupleOfNodes[0].obj
-			tupleOfNodes[0].obj.ViewObject.Visibility = False
+			if tupleOfNodes[0].obj.ViewObject is not None:
+				tupleOfNodes[0].obj.ViewObject.Visibility = False
 			tupleOfNodes = tupleOfNodes[1:]
 		if(self.my_union != None and len(tupleOfNodes)>0):
 			self.obj.Tool = self.my_union.obj
@@ -648,7 +653,8 @@ class EasyNodeChamfer(EasyNode):
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>0):
 			self.obj.Base = tupleOfNodes[0].obj
-			self.obj.Base.ViewObject.Visibility = False
+			if self.obj.Base.ViewObject is not None:
+				self.obj.Base.ViewObject.Visibility = False
 			self.obj.Edges = self.edges
 		return self
 	def set(self, node):
@@ -711,7 +717,8 @@ class EasyNodeMirror(EasyNodeColored):
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>0):
 			self.obj.Source = tupleOfNodes[0].obj
-			self.obj.Source.ViewObject.Visibility = False
+			if self.obj.Source.ViewObject is not None:
+				self.obj.Source.ViewObject.Visibility = False
 		return self
 
 def mirror(x=0.0,y=0.0,z=0.0,name=None):
@@ -775,7 +782,8 @@ class EasyNodeGroup(EasyNode):
 		for enode in tupleOfNodes :
 			if(isinstance(enode, EasyNode)):
 				arrayShape.append(enode.obj)
-				enode.obj.ViewObject.Visibility = True
+				if enode.obj.ViewObject is not None:
+					enode.obj.ViewObject.Visibility = True
 			else:
 				print("error, trying to layout '"+str(enode)+"' into a union of EsayNode")
 		self.obj.Group = arrayShape
@@ -903,14 +911,14 @@ def cone(r1=_default_size*2,r2=_default_size,h=_default_size,center=None,d1=0.0,
 	if( (r2 == _default_size or r2 == 0) and d2 != 0.0):
 		r2 = d2/2.0
 	if(fn>2):
-		#compute extrusion angle
+		#compute extrusion angle FIXME: cone(r1=3,r2=1,h=4,fn=4) it amlost a pyramid!
 		angle = 0.0
 		if(r1>r2):
 			angle = -math.atan(float(r1-r2)/float(h))
 		else:
 			angle = math.atan(float(r2-r1)/float(h))
 		#print(str(r1)+" "+str(fn)+" "+str(angle))
-		return z_extrude(length=h,angle=angle)(poly_reg(r1,fn,center=center))
+		return linear_extrude(height=h,taper=angle)(poly_reg(r1,fn,center=center))
 		# return poly_reg(r1,fn,center=center)
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
@@ -1788,7 +1796,8 @@ class EasyNodeLinear(EasyNodeColored):
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>=1):
 			self.obj.Base = tupleOfNodes[0].obj
-			self.obj.Base.ViewObject.Visibility = False
+			if self.obj.Base.ViewObject is not None:
+				self.obj.Base.ViewObject.Visibility = False
 		return self
 
 def linear_extrude(height=_default_size,center=None,name=None, twist=0, taper=0.0, slices=0,convexity=0):
@@ -1858,7 +1867,8 @@ class EasyNodeRotateExtrude(EasyNodeColored):
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>=1):
 			self.obj.Source = tupleOfNodes[0].obj
-			self.obj.Source.ViewObject.Visibility = False
+			if self.obj.Source.ViewObject is not None:
+				self.obj.Source.ViewObject.Visibility = False
 		return self
 
 def rotate_extrude(angle=360.0,name=None,convexity=2):
@@ -1909,8 +1919,10 @@ class EasyNodeSweep(EasyNode):
 			arrayEdge.append("Edge"+str(i))
 			i += 1
 		self.obj.Spine = (base.obj,arrayEdge)
-		base.obj.ViewObject.Visibility = False
-		tool.obj.ViewObject.Visibility = False
+		if base.obj.ViewObject is not None:
+			base.obj.ViewObject.Visibility = False
+		if tool.obj.ViewObject is not None:
+			tool.obj.ViewObject.Visibility = False
 		return self
 
 #transition in ["Right corner", "Round corner","Transformed" ]
@@ -1936,13 +1948,15 @@ class EasyNodeAssembleWire(EasyNode):
 		arrayObjChilds = []
 		for node in tupleOfNodes:
 			arrayObjChilds.append(node.obj)
-			node.obj.ViewObject.Visibility = False
+			if node.obj.ViewObject is not None:
+				node.obj.ViewObject.Visibility = False
 			for edge in node.obj.Shape.Edges:
 				edges.append(Part.Edge(edge))
 		#put childs into a group
 		obj_group = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroup", self.name+"_components")
 		obj_group.Group = arrayObjChilds
-		obj_group.ViewObject.Visibility = False
+		if obj_group.ViewObject is not None:
+			obj_group.ViewObject.Visibility = False
 		#create wire
 		if(self.closed):
 			self.obj.Shape = Part.Face(Part.Wire(edges))
@@ -2106,9 +2120,9 @@ class ApplyNodeFunc():
 		return self(line(p1,p2,center,name))
 	def text(self,text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
 		return self(text(text, size, font,center,name))
-	def z_extrude(self,length=_default_size, angle=0.0):
-		return self(z_extrude(length, angle))
-	def linear_extrude(self,x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
+	def linear_extrude(self,length=_default_size, angle=0.0):
+		return self(linear_extrude(length, angle))
+	def extrude(self,x=0.0,y=0.0,z=0.0, angle=0.0,name=None):
 		return self(linear_extrude(x,y,z, angle,name))
 	def rotate_extrude(self,angle=360.0,name=None):
 		return self(rotate_extrude(angle,name))
