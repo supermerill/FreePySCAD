@@ -4,12 +4,13 @@ You like OpenSCAD but you hate it at the same time?
 You can't work in FreeCAD because don't like wasting your time moving the mouse and clicking?
 FreePySCAD is for you!
 
-note: it's in an alpha stage right now. You can use it but some things may not work as advertised. Tested against 0.17.
+note: it's in an alpha stage right now. You can use it but some things may not work as advertised.
+Now it needs the FreeCAD 0.19 version, because the text() function, but you should be able to use older ones if you don't use it.
 ## How it work
 FreePySCAD is a python library for FreeCAD to let user write their code in a text editor and see the result after a "compilation" process, like OpenSCAD but in FreeCAD.  
 To install the library, clone the github repository into the "FreeCAD X.xx/mod" directory  
 To write your code, you can open the FreeCAD macro editor and beginning your macro with "from FreePySCAD.FreePySCAD import *"   
-You can also type in the python console "execfile('path_to/my_pycad.py')", this has the advantage to show the errors.  
+You can also type in the python console "exec(open('path_to/my_pycad.py').read())", this has the advantage to show the errors.
 The geometry passed inside the scene().redraw(...) function will be added inside the current document, replacing everything.
 ## what's different
 The braces are replaced with parenthesis  
@@ -19,6 +20,7 @@ You can't let the modifiers like translate, rotate... be unattached: use the par
     OpenSCAD: difference(){ translate([1,1,0]) cube(2); rotate([0,0,45]) cube(2); }  
     FreePySCAD:   difference()( translate([1,1,0]).cube(2), rotate([0,0,45])(cube(2)),)  
 resize, minkowski and hull aren't implemented.  
+But offset(2,True)(3D_OBJ) is similar to minkowski(){3D_OBJ;sphere(1);}
 
 You can also wrote a more concise code with FreePySCAD if you want (i was tired of writing "translate([ ])" over an over)
 
@@ -27,7 +29,7 @@ You can also wrote a more concise code with FreePySCAD if you want (i was tired 
 You can now use functions with real variables that can be changed!  
 Here is a working ugly example:
 
-	from Pyscad.pyscad import *
+	from FreePySCAD.freepyscad import *
 	def make_T(l,h):
 		big = cube(l,w,h)
 		l = l/3.0
@@ -45,8 +47,25 @@ Here is a working ugly example:
 		T_10cube,
 		T_3cube.move(12),
 	)
-You also have to pass your objects inside the scene.redraw() function to put it into the FreeCAD environment.
-You can see and execute some complex exemples in the exemple directory
+![ugly example](examples/ugly_example.jpg)
+Note that you have to pass your objects inside the scene.redraw() function to put them into the FreeCAD environment.
+Here is a possible translation of the openscad example:
+	from FreePySCAD.freepyscad import *
+	scene().redraw(
+		union()(
+			cylinder(h=30, r=8),
+			translate([0, 0, 40]).sphere(20),
+		)
+	)
+But i prefer to write it that way:
+	from FreePySCAD.freepyscad import *
+	scene().redraw(
+		union()(
+			cylinder(r=8, h=30),
+			sphere(20).move(z=40),
+		)
+	)
+You can see and execute some complex examples in the examples directory
 ## FreePySCAD cheatsheet:
 
 #### 1D:
@@ -95,15 +114,19 @@ note: most of these transformations can only work on a single object, as these c
 * iso_thread(d,p,h,internal,offset,fn) # usage of thread method with an iso pattern.
 
 #### 3D Boolean operations:
-* union()(...3D) | union().add(...3D) # can work with 2D  
+* union()(...3D) | union().add(...3D) # may work with 2D
 * intersection()(...3D)  
 * difference()(...3D) | cut()(...3D)  
 
 #### Transformations:
 * mirror(x,y,z)(...) | mirror([x,y,z])(...)  
 * offset(length,fillet,fusion)(...3D)  
+Chamfer and fillet can fail if the length is too big for an edge, so prefer using it on simple object or it can fail and makes your object disapear. Also, in this simple version they only work with one object and one length for all edges.
+* chamfer(l)(3D)
+* fillet(l)(3D)
 
-wip, don't work, use the gui for now:
+wip, don't work (ids can change widly, need to use absolute positioning)
+use the gui, the offset or the dangerous (if done on complex part) .chamfer|.fillet:
 * chamfer().setEdges(radius,edge_id...)(...3D)
 * fillet().setEdges(radius,edge_id...)(...3D)  
 
@@ -111,9 +134,10 @@ wip, don't work, use the gui for now:
 * .x/y/z() | .center()
 * translate/move(x,y,z)(...) | move([x,y,z])(...) | .move(x,y,z) | .move([x,y,z]) | move(x,y,z).stdfuncXXX(  
 * rotate(x,y,z)(...) | rotate([x,y,z])(...) | .rotate(x,y,z) | .rotate([x,y,z]) | rotate(x,y,z).stdfuncXXX(  
+* .color("colorname") | .color(r,g,b,a) | .color([r,g,b,a]) | color(something)(...) | color(something).stdfuncXXX( # may not work as intended in certain circumstances. 
+* .multmatrix(m)
+!! Don't use scale if you can avoid: this function doesn't exist in freecad, so this method tries to return back into the object tree to change values, but this can easily fail. Prefer to create the object at the right size from the get-go, using parametric variables if needed.
 * scale(x,y,z)(...) | scale([x,y,z])(...) | .scale(x,y,z) | .scale([x,y,z]) | scale(x,y,z).stdfuncXXX(  
-* .color("colorname") | .color(r,g,b,a) | .color([r,g,b,a]) | color(something)(...) | color(something).stdfuncXXX(  
-* .multmatrix(m)  
 
 #### Other:
 * scene().draw(...3D) | scene().redraw(...3D) #redraw() erase everything in the document before rebuilding the object tree. Draw() try to update when possible and don't erase everything, but sometimes it fail to detect a change.
@@ -134,3 +158,6 @@ All python syntax and standard library can be used
 * The move(2).box(1) work but you cannot do move(1).myfunc() because myfunc isn't in the list of functions that is available to the "move object". In this case, you have to use move(1)(myfunc()) or myfunc().move(1)
 * When a part fail to compile, it creates a sphere of size _default_size. you can change the variable _default_size, it's used as a default value when 0.0 will create an impossible object. Example: circle() == circle(_default_size).
 * solid_slices : need a double-array of points. Each array of points is a slice. It creates triangles to join one slice to the next. The last point of each slice have to be approximately aligned ( = don't put them 180° apart), because it's used as the first edge. The middle point (mean of all points if not given via the centers argument) is used to choose the next point to draw triangle and for closing the shell at the bottom layer and top layer. The line from the center of a slice to the center of the next one must be inside the slice and the next slice.
+
+## LICENCE
+The licence is gplv2 because freecad is gplv2 (as i'm using freecad functions). If Freecad update his licence to V3, then you can consider that this software has also the v3 licence.

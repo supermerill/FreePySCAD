@@ -1,5 +1,5 @@
-from Pyscad.pyscad import *
-# execfile('C:/Program Files/FreeCAD 0.18/Mod/Pyscad/exemples/garden_pipe.FCMacro')
+from FreePySCAD.freepyscad import *
+# execfile('C:/Program Files/FreeCAD 0.18/Mod/FreePySCAD/examples/garden_pipe.FCMacro')
 
 def nounou():
     return difference()(

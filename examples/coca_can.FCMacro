@@ -1,5 +1,5 @@
-from Pyscad.pyscad import *
-# execfile('C:/Program Files/FreeCAD 0.18/Mod/Pyscad/exemples/coca_can.FCMacro')
+from FreePySCAD.freepyscad import *
+# execfile('C:/Program Files/FreeCAD 0.18/Mod/FreePySCAD/examples/coca_can.FCMacro')
 
 rayon = 1;
 decalR = 0.2;

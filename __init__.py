@@ -20,14 +20,14 @@
 # *                                                                         *
 # ***************************************************************************
 
-__title__ = "Pyscad"
+__title__ = "FreePySCAD"
 __author__ = "supermerill"
-__url__ = "http://www.freecadweb.org"
+__url__ = "https://github.com/supermerill/FreePySCAD"
 __doc__ = "Dafuk"
 
 ## @package CompoundTools
 #  \ingroup PART
 #  \brief CompoundTools Package for Part workbench
 
-# import pyscad
+# import freepyscad
 

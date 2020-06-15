@@ -1,5 +1,5 @@
-from Pyscad.pyscad import *
-# execfile('C:/Program Files/FreeCAD 0.18/Mod/Pyscad/exemples/box_terraformars.FCMacro')
+from FreePySCAD.freepyscad import *
+# execfile('C:/Program Files/FreeCAD 0.18/Mod/FreePySCAD/examples/box_terraformars.FCMacro')
 
 ep_fond = 0.4
 
