@@ -24,7 +24,7 @@
 # more info on the github wiki
 ######################################
 
-import Part, FreeCAD, math, Draft, InvoluteGearFeature, importSVG, Mesh
+import FreeCAD, Part, math, Draft, InvoluteGearFeature, importSVG, Mesh, CompoundTools.CompoundFilter
 from FreeCAD import Base
 
 ######### basic functions #########
@@ -650,8 +650,11 @@ class EasyNodeChamfer(EasyNode):
 		self.actions = []
 		self.actions_after = []
 		self.simple = True
+		self.main_length = 0 #used as default if not provided
 	def layout_childs(self, *tupleOfNodes):
 		if(len(tupleOfNodes)>0):
+			if len(self.edges) == 0:
+				self.addAllEdges()
 			self.obj.Base = tupleOfNodes[0].obj
 			if self.obj.Base.ViewObject is not None:
 				self.obj.Base.ViewObject.Visibility = False
@@ -680,8 +683,19 @@ class EasyNodeChamfer(EasyNode):
 			self.edges.append((eidx, length, length))
 		# self.obj.Edges = self.edges
 		return self
+	def addAllEdges(self):
+		if(len(self.childs) > 1):
+			print("Error, can only chamfer/fillet one object at a time")
+			return
+		if(len(self.childs) == 0):
+			return
+		eidx = 0
+		print("addAllEdges "+self.childs[0].obj.Name+" : " + str(len(self.childs[0].obj.Shape.Edges)))
+		for edge in self.childs[0].obj.Shape.Edges:
+			eidx += 1
+			self.edges.append((eidx, self.main_length, self.main_length))
 
-def chamfer(name=None):
+def chamfer(name=None, l=_default_size/4):
 	global _idx_EasyNode
 	node = EasyNodeChamfer()
 	_idx_EasyNode += 1
@@ -689,12 +703,15 @@ def chamfer(name=None):
 		node.name = "chamfer_"+str(_idx_EasyNode)
 	else:
 		node.name = name
+	node.main_length = l
+	if(isinstance(name,(int, float))):
+		node.main_length = name
 	def createChamfer(node):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Chamfer", node.name)
 	node.addAction(createChamfer, (node,))
 	return node
 
-def fillet(name=None):
+def fillet(name=None, l=_default_size/4):
 	global _idx_EasyNode
 	node = EasyNodeChamfer()
 	_idx_EasyNode += 1
@@ -702,6 +719,9 @@ def fillet(name=None):
 		node.name = "fillet_"+str(_idx_EasyNode)
 	else:
 		node.name = name
+	node.main_length = l
+	if(isinstance(name,(int, float))):
+		node.main_length = name
 	def createFillet(node):
 		node.obj = FreeCAD.ActiveDocument.addObject("Part::Fillet", node.name)
 	node.addAction(createFillet, (node,))
@@ -844,13 +864,13 @@ def box(x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
 	node.addAction(createBox, (node, x,y,z,center))
 	return node
 
-def tri_rect(x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
+def triangle(x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
 	(x,y,z) = _getTuple3Abs(x,y,z,_default_size)
 	global _idx_EasyNode
 	node = EasyNodeLeaf()
 	_idx_EasyNode += 1
 	if(name == None or not isinstance(name, str)):
-		node.name = "tri_rect_"+str(_idx_EasyNode)
+		node.name = "triangle_"+str(_idx_EasyNode)
 	else:
 		node.name = name
 	def createTriRect(node, x,y,z,center):
@@ -1743,16 +1763,89 @@ def arc(p1=[_default_size,0.0,0.0],p2=[_default_size*0.7071,_default_size*0.7071
 	node.addAction(createArc, (node, p1,p2,p3,center))
 	return node
 	
-def text(text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
+if(not '_pyscad_font_dir' in globals()):
+	global _pyscad_font_dir
+#	_pyscad_font_dir = "C:/Windows/Fonts/"
+	_pyscad_font_dir = ""
+
+def set_font_dir(prefix):
+	global _pyscad_font_dir
+	_pyscad_font_dir = prefix
+	#todo: add '/' at the end if not present
+
+def text_old(text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
 	global _idx_EasyNode
+	global _pyscad_font_dir
 	node = EasyNode2D()
 	_idx_EasyNode += 1
 	if(name == None or not isinstance(name, str)):
 		node.name = "text_"+str(_idx_EasyNode)
 	else:
 		node.name = name
-	def createText(node, text,size,font,center):
+	#TODO: add .ttf if not present at the end
+	font = _pyscad_font_dir + font
+	def createText(node, text, size, font, center):
 		node.obj = Draft.makeShapeString(String=text,FontFile=font,Size=size,Tracking=0)
+		node.obj.Label = node.name
+		# temp_poly = Draft.makeShapeString(String=text,FontFile=font,Size=size,Tracking=0)
+		# node.obj.Shape = temp_poly
+		node.centerx = 0.0
+		node.centery = 0.0
+		useCenter(node, center)
+	node.addAction(createText, (node, text,size,font,center))
+	return node
+
+def explodeCompound(compound_obj, b_group = None):
+	"""explodeCompound(compound_obj, b_group = None): creates a bunch of compound filters, to extract every child of a compound into a separate object.
+	group: if True, Group is always made. If False, group is never made. If None, group is made if there is more than one child.
+	returns: (group_object, list_of_child_objects)"""
+	sh = compound_obj.Shape
+	n = len(sh.childShapes(False,False))
+	if b_group is None:
+		b_group = n > 1
+	if b_group:
+		group = compound_obj.Document.addObject('App::DocumentObjectGroup','GrExplode_'+compound_obj.Name)
+		group.Label = 'Exploded {obj.Label}'.format(obj = compound_obj)
+	else:
+		group = compound_obj.Document
+	features_created = []
+	for i in range(0, n):
+		cf = CompoundTools.CompoundFilter.makeCompoundFilter('{obj.Name}_child{child_num}'.format(obj = compound_obj, child_num = i), group)
+		cf.Label = '{obj.Label}.{child_num}'.format(obj = compound_obj, child_num = i)
+		cf.Base = compound_obj
+		cf.FilterType = 'specific items'
+		cf.items = str(i)
+		if cf.ViewObject is not None:
+			cf.ViewObject.DontUnhideOnDelete = True
+		features_created.append(cf)
+	return (group, features_created)
+
+def text(text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
+	global _idx_EasyNode
+	global _pyscad_font_dir
+	node = EasyNode2D()
+	_idx_EasyNode += 1
+	if(name == None or not isinstance(name, str)):
+		node.name = "text_"+str(_idx_EasyNode)
+	else:
+		node.name = name
+	#TODO: add .ttf if not present at the end
+	font = _pyscad_font_dir + font
+	def createText(node, text, size, font, center):
+		textFaces = Draft.makeShapeString(String=text,FontFile=font,Size=size,Tracking=0)
+		### Begin command Part_ExplodeCompound
+		textComponents = explodeCompound(textFaces)
+		if textFaces.ViewObject is not None:
+			textFaces.ViewObject.hide()
+		### End command Part_ExplodeCompound
+		### Begin command union
+		node.obj = FreeCAD.ActiveDocument.addObject("Part::MultiFuse",node.name)
+		node.obj.Shapes = textComponents[1]
+		for compo in textComponents[1]:
+			compo.Visibility=False
+			textComponents[0].removeObject(compo)
+		#textComponents[0].addObject(node.obj)
+		FreeCAD.ActiveDocument.Objects.remove(textComponents[0])
 		node.obj.Label = node.name
 		# temp_poly = Draft.makeShapeString(String=text,FontFile=font,Size=size,Tracking=0)
 		# node.obj.Shape = temp_poly
@@ -1942,6 +2035,7 @@ def path_extrude(frenet=True, transition = "Right corner",name=None):
 	node.addAction(createPExtrude, (node, frenet,transition))
 	return node
 
+#TODO: make face ? Draft.upgrade([objs[1]],False,"makeFaces")
 class EasyNodeAssembleWire(EasyNode):
 	def layout_childs(self, *tupleOfNodes):
 		edges = []
@@ -2058,10 +2152,10 @@ class ApplyNodeFunc():
 		return self(cut(name))
 	def difference(self,name=None):
 		return self(cut(name))
-	def chamfer(self,name=None):
-		return self(chamfer(name))
-	def fillet(self,name=None):
-		return self(fillet(name))
+	def chamfer(self,name=None,l=_default_size/4):
+		return self(chamfer(name,l))
+	def fillet(self,name=None,l=_default_size/4):
+		return self(fillet(name,l))
 	def mirror(self,x=0.0,y=0.0,z=0.0,name=None):
 		return self(mirror(x,y,z,name))
 	def offset(self,length=0.0,fillet=True,fusion=True,name=None):
@@ -2074,8 +2168,8 @@ class ApplyNodeFunc():
 		return self(cube(size,y,z,center,x, name))
 	def box(self,x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
 		return self(box(x,y,z,center, name))
-	def tri_rect(self,x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
-		return self(tri_rect(x,y,z,center, name))
+	def triangle(self,x=_default_size,y=_default_size,z=_default_size,center=None, name=None):
+		return self(triangle(x,y,z,center, name))
 	def cylinder(self,r=0.0,h=_default_size,center=None,d=0.0,r1=0.0,r2=0.0,d1=0.0,d2=0.0,angle=360.0,fn=1,name=None):
 		return self(cylinder(r,h,center,d,r1,r2,d1,d2,angle,fn,name))
 	def cone(self,r1=_default_size,r2=_default_size,h=_default_size,center=None,d1=0.0,d2=0.0,fn=1,name=None):
@@ -2149,6 +2243,7 @@ def scale(x=0.0,y=0.0,z=0.0):
 	
 def color(r=0.0,v=0.0,b=0,a=0.0):
 	return ApplyNodeFunc(magic_color, (r,v,b,a))
+	
 
 ######### import & export #########
 

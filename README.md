@@ -17,10 +17,10 @@ The braces are replaced with parenthesis
 The ';' are replaced with ',' and you also have to place it after ')' if no other ')' are directly after that to respect the python syntax.  
 You can't let the modifiers like translate, rotate... be unattached: use the parenthesis or a dot (see below)
 
-    OpenSCAD: difference(){ translate([1,1,0]) cube(2); rotate([0,0,45]) cube(2); }  
-    FreePySCAD:   difference()( translate([1,1,0]).cube(2), rotate([0,0,45])(cube(2)),)  
+    OpenSCAD:   difference(){ translate([1,1,0]) cube(2); rotate([0,0,45]) cube(2); }  
+    FreePySCAD: difference()( translate([1,1,0]).cube(2), rotate([0,0,45])(cube(2)),)  
 resize, minkowski and hull aren't implemented.  
-But offset(2,True)(3D_OBJ) is similar to minkowski(){3D_OBJ;sphere(1);}
+offset(2,True)(thing()) is similar to minkowski(){thing(); sphere(2);}
 
 You can also wrote a more concise code with FreePySCAD if you want (i was tired of writing "translate([ ])" over an over)
 
@@ -49,7 +49,8 @@ Here is a working ugly example:
 	)
 ![ugly example](examples/ugly_example.jpg)
 Note that you have to pass your objects inside the scene.redraw() function to put them into the FreeCAD environment.
-Here is a possible translation of the openscad example:
+Here is a possible translation of the openscad readme example :
+
 	from FreePySCAD.freepyscad import *
 	scene().redraw(
 		union()(
@@ -57,7 +58,8 @@ Here is a possible translation of the openscad example:
 			translate([0, 0, 40]).sphere(20),
 		)
 	)
-But i prefer to write it that way:
+But I prefer to write it that way:
+
 	from FreePySCAD.freepyscad import *
 	scene().redraw(
 		union()(
