@@ -1,5 +1,5 @@
 #########################################################
-# This file is distributed against the LGPL licence     #
+# This file is distributed against the GPL V3 licence   #
 # This file is made by supermerill (Remi Durand)        #
 #########################################################
 
@@ -24,7 +24,9 @@
 # more info on the github wiki
 ######################################
 
-import FreeCAD, Part, math, Draft, InvoluteGearFeature, importSVG, Mesh, CompoundTools.CompoundFilter
+import FreeCAD, Part, math, Draft, InvoluteGearFeature, importSVG, Mesh
+import CompoundTools.CompoundFilter # freecad0.19
+import os.path
 from FreeCAD import Base
 
 ######### basic functions #########
@@ -836,7 +838,7 @@ def group(name=None):
 ######### 3D objects ######### 
 
 
-def cube(size=0.0,y=0.0,z=0.0,center=None,x=0.0, name=None):
+def cube(size=_default_size,y=0.0,z=0.0,center=None,x=0.0, name=None):
 	(x,y,z,size) = _getTuple4Abs(size,y,z,x,0.0)
 	if(x==0.0 and size != 0.0):
 		x = size
@@ -1762,15 +1764,25 @@ def arc(p1=[_default_size,0.0,0.0],p2=[_default_size*0.7071,_default_size*0.7071
 		useCenter(node, center)
 	node.addAction(createArc, (node, p1,p2,p3,center))
 	return node
-	
+
+#list of font dir, and search on them when asked for one
 if(not '_pyscad_font_dir' in globals()):
 	global _pyscad_font_dir
-#	_pyscad_font_dir = "C:/Windows/Fonts/"
-	_pyscad_font_dir = ""
+	_pyscad_font_dir = []
 
-def set_font_dir(prefix):
+def set_font_dir(prefixes):
 	global _pyscad_font_dir
-	_pyscad_font_dir = prefix
+	_pyscad_font_dir = []
+	add_font_dir(prefixes)
+	
+def add_font_dir(prefixes):
+	if(isinstance(prefixes, list)):
+		for prefix in prefixes:
+			add_font_dir(prefix)
+	if(isinstance(prefixes, str)):
+		if( not prefixes[-1].endswith('/')):
+			prefixes += '/'
+		_pyscad_font_dir.append(prefixes)
 	#todo: add '/' at the end if not present
 
 def text_old(text="Hello", size=_default_size, font="arial.ttf",center=None,name=None):
@@ -1795,10 +1807,9 @@ def text_old(text="Hello", size=_default_size, font="arial.ttf",center=None,name
 	node.addAction(createText, (node, text,size,font,center))
 	return node
 
+# NOTE: this function is a modified version of the one found inside Freecad
+# this will prevent any not-open source licence
 def explodeCompound(compound_obj, b_group = None):
-	"""explodeCompound(compound_obj, b_group = None): creates a bunch of compound filters, to extract every child of a compound into a separate object.
-	group: if True, Group is always made. If False, group is never made. If None, group is made if there is more than one child.
-	returns: (group_object, list_of_child_objects)"""
 	sh = compound_obj.Shape
 	n = len(sh.childShapes(False,False))
 	if b_group is None:
@@ -1830,7 +1841,14 @@ def text(text="Hello", size=_default_size, font="arial.ttf",center=None,name=Non
 	else:
 		node.name = name
 	#TODO: add .ttf if not present at the end
-	font = _pyscad_font_dir + font
+	if(not os.path.exists(font)):
+		for font_dir in _pyscad_font_dir:
+			if(os.path.exists(font_dir + font)):
+				font = _pyscad_font_dir + font
+				break
+	if(not os.path.exists(font)):
+		print("Error, can't find a good path for the font '"+font+"'")
+	#now we have a good path
 	def createText(node, text, size, font, center):
 		textFaces = Draft.makeShapeString(String=text,FontFile=font,Size=size,Tracking=0)
 		### Begin command Part_ExplodeCompound

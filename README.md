@@ -4,8 +4,8 @@ You like OpenSCAD but you hate it at the same time?
 You can't work in FreeCAD because don't like wasting your time moving the mouse and clicking?
 FreePySCAD is for you!
 
-note: it's in an alpha stage right now. You can use it but some things may not work as advertised.
-Now it needs the FreeCAD 0.19 version, because the text() function, but you should be able to use older ones if you don't use it.
+note: it's in a beta stage right now. You can use it but some fucntions may have some restrictions (these should be indicated here or in the wiki).
+It needs the FreeCAD 0.19 version, because the text() function, but you may be able to use older ones if you don't use it.
 ## How it work
 FreePySCAD is a python library for FreeCAD to let user write their code in a text editor and see the result after a "compilation" process, like OpenSCAD but in FreeCAD.  
 To install the library, clone the github repository into the "FreeCAD X.xx/mod" directory  
@@ -48,6 +48,7 @@ Here is a working ugly example:
 		T_3cube.move(12),
 	)
 ![ugly example](examples/ugly_example.jpg)
+
 Note that you have to pass your objects inside the scene.redraw() function to put them into the FreeCAD environment.
 Here is a possible translation of the openscad readme example :
 
@@ -154,12 +155,12 @@ All python syntax and standard library can be used
 * You can replace )(...) by ).add(...) for union, difference and
 * Center: on almost every object, you can set as parameter, center=True or center=center_x, center=center_yz, ...
 	you can also use the transformation .center() or .x(), .yz(), .xyz() ....
-* Label: on almost everything, you can set the "name" parameter to whatever you want, it will be shown in the FreeCAD object hierarchy.
+* Label: on almost everything, you can set the "name" parameter to whatever you want, it will be shown in the FreeCAD object hierarchy. If you export an amf file, the root object name will be used for the file content.
 * The notation move(2).box(1) should be used only when it's very convenient, it's here mainly to make conversion from OpenSCAD to FreePySCAD more easy, but it can led to strange behaviors, see the two points below.
-* Order of execution: move(6)(move(3).move(2).cube(1).move(4).move(5)) => it begin at the object then move away from it. 
+* Order of execution: move(6)(move(3).move(2).cube(1).move(4).move(5)) => it begins at the object then moves away from it.
 * The move(2).box(1) work but you cannot do move(1).myfunc() because myfunc isn't in the list of functions that is available to the "move object". In this case, you have to use move(1)(myfunc()) or myfunc().move(1)
 * When a part fail to compile, it creates a sphere of size _default_size. you can change the variable _default_size, it's used as a default value when 0.0 will create an impossible object. Example: circle() == circle(_default_size).
 * solid_slices : need a double-array of points. Each array of points is a slice. It creates triangles to join one slice to the next. The last point of each slice have to be approximately aligned ( = don't put them 180° apart), because it's used as the first edge. The middle point (mean of all points if not given via the centers argument) is used to choose the next point to draw triangle and for closing the shell at the bottom layer and top layer. The line from the center of a slice to the center of the next one must be inside the slice and the next slice.
 
 ## LICENCE
-The licence is gplv2 because freecad is gplv2 (as i'm using freecad functions). If Freecad update his licence to V3, then you can consider that this software has also the v3 licence.
+The licence is gplv3.
