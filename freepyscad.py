@@ -1006,13 +1006,20 @@ def torus(r1=_default_size, r2=0.1,center=None,d1=0.0,d2=0.0,name=None):
 		useCenter(node, center)
 	node.addAction(createTorus, (node, r1,r2,center))
 	return node
-	
 
 def poly_ext(r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
+	return ngon(r,nb,h,center,0.0,d,name)
+	
+def ngon(r=_default_size, n=3, h=_default_size,center=None,a=0.0,d=0.0,name=None):
 	r = abs(r)
 	h = abs(h)
-	nb= max(3, abs(nb))
+	n= max(3, abs(n))
 	d = abs(d)
+	a = abs(a)
+	if( a != 0): 
+		# create polygon with apothem, not radius
+		r = a / math.cos(math.radians(180)/n)
+	
 	if( (r ==_default_size or r == 0.0) and d != 0.0):
 		r = d/2.0
 	global _idx_EasyNode
@@ -1037,19 +1044,11 @@ def poly_ext(r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None)
 		node.centery = -r
 		node.centerz = h/2.0
 		useCenter(node, center)
-	node.addAction(createPolyExt, (node, r,nb,h,center))
+	node.addAction(createPolyExt, (node, r,n,h,center))
 	return node
 
 def poly_int(a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
-	a = abs(a)
-	h = abs(h)
-	nb= max(3, abs(nb))
-	d = abs(d)
-	if( (a == _default_size or a == 0.0) and d != 0.0):
-		a = d/2.0
-	# create polygon with apothem, not radius
-	radius = a / math.cos(math.radians(180)/nb)
-	return poly_ext(radius,nb,h,center,name=name)
+	return ngon(0.0, nb,h,center,a,d,name)
 
 def polyhedron(points=[], faces=[],center=None,name=None):
 	if(not (isinstance(points[0], list) or isinstance(points[0], tuple)) or len(points)<2):
@@ -2198,6 +2197,10 @@ class ApplyNodeFunc():
 		return self(torus(r1, r2,center,d1,d2,name))
 	def poly_ext(self,r=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
 		return self(poly_ext(r, nb, h,center,d,name))
+	def poly_int(self,a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
+		return self(poly_int(a, nb, h,center,d,name))
+	def ngon(self,r=_default_size, nb=3, h=_default_size,center=None,a=0.0,d=0.0,name=None):
+		return self(ngon(a, nb, h,center,a,d,name))
 	def polyhedron(self,points=[],faces=[],center=None,name=None):
 		return self(polyhedron(points, faces,center,name))
 	def polyhedron_wip(self,points=[],faces=[],center=None,name=None):
@@ -2206,8 +2209,6 @@ class ApplyNodeFunc():
 		return self(solid_slices(points, centers,center,name))
 	def createPolyExt(self,node, r,nb,h,center):
 		return self(createPolyExt(node, r,nb,h,center))
-	def poly_int(self,a=_default_size, nb=3, h=_default_size,center=None,d=0.0,name=None):
-		return self(poly_int(a, nb, h,center,d,name))
 	def circle(self,r=_default_size,center=None,d=0.0,fn=1,name=None):
 		return self(circle(r,center,d,fn,name))
 	def ellipse(self,r1=0.0,r2=0.0,center=None,d1=0.0,d2=0.0,name=None):

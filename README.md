@@ -111,6 +111,7 @@ note: most of these transformations can only work on a single object, as these c
 * torus(r1,r2,h)  
 * poly_ext(r,nb,h) # r = radius, nb = nb vertex (min 3)  
 * poly_int(a,nb,h) # a = apothem, nb = nb vertex (min 3)  
+* ngon(r|d|a,n,h) # same as poly_ext/poly_int
 * polyhedron(points, faces) # for debugging use polyhedron_wip : it creates a group of points & faces instead of a 3D solid mesh  
 * solid_slices(points, centers) #new way to create not-so complicated shells, see below. centers are optional. Much simpler than polyhedron. May not work with not-convex shapes.
 * thread(r,p,nb,r2, pattern,fn,center) # implementation of a way to create threads, with pattern (2D array of points). It creates a new 3D object from triangles (vertexes & faces).
