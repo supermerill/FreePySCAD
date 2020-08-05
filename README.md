@@ -9,7 +9,8 @@ It needs the FreeCAD 0.19 version, because the text() function, but you may be a
 ## How it work
 FreePySCAD is a python library for FreeCAD to let user write their code in a text editor and see the result after a "compilation" process, like OpenSCAD but in FreeCAD.  
 To install the library, clone the github repository into the "FreeCAD X.xx/mod" directory  
-To write your code, you can open the FreeCAD macro editor and beginning your macro with "from FreePySCAD.FreePySCAD import *"   
+To write your code, you can open the FreeCAD macro editor and beginning your macro with  
+"from FreePySCAD.freepyscad import *"   
 You can also type in the python console "exec(open('path_to/my_pycad.py').read())", this has the advantage to show the errors.
 The geometry passed inside the scene().redraw(...) function will be added inside the current document, replacing everything.
 ## what's different
