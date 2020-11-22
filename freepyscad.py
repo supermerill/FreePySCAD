@@ -839,7 +839,7 @@ def group(name=None):
 
 
 def cube(size=_default_size,y=0.0,z=0.0,center=None,x=0.0, name=None):
-	(x,y,z,size) = _getTuple4Abs(size,y,z,x,0.0)
+	(size,y,z) = _getTuple3Abs(size,y,z,0.0)
 	if(x==0.0 and size != 0.0):
 		x = size
 	if(y==0.0 and z==0.0):
