@@ -16,7 +16,7 @@
 #
 # move() rotate() scale() color() return a different kind of object
 #  because they are not a mod but a modifier onto a node. They can 
-#  be use almost like the other one, no ned to worry.
+#  be use almost like the other one, no need to worry.
 #
 # Color, multmatrix and scale can't be applied on a node so they are
 #  passed to the leafs.
