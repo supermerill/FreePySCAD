@@ -4,7 +4,7 @@ You like OpenSCAD but you hate it at the same time?
 You can't work in FreeCAD because don't like wasting your time moving the mouse and clicking?
 FreePySCAD is for you!
 
-note: it's in a beta stage right now. You can use it but some fucntions may have some restrictions (these should be indicated here or in the wiki).
+note: it's in a beta stage right now. You can use it but some functions may have some restrictions (these should be indicated here or in the wiki).
 It needs the FreeCAD 0.19 version, because the text() function, but you may be able to use older ones if you don't use it.
 ## How it work
 FreePySCAD is a python library for FreeCAD to let user write their code in a text editor and see the result after a "compilation" process, like OpenSCAD but in FreeCAD.  
@@ -115,7 +115,7 @@ note: most of these transformations can only work on a single object, as these c
 * ngon(r|d|a,n,h) # same as poly_ext/poly_int
 * polyhedron(points, faces) # for debugging use polyhedron_wip : it creates a group of points & faces instead of a 3D solid mesh  
 * solid_slices(points, centers) #new way to create not-so complicated shells, see below. centers are optional. Much simpler than polyhedron. May not work with not-convex shapes.
-* thread(r,p,nb,r2, pattern,fn,center) # implementation of a way to create threads, with pattern (2D array of points). It creates a new 3D object from triangles (vertexes & faces).
+* thread(r,p,nb,r2, pattern,fn,center) # implementation of a way to create threads, with pattern (2D array of points). It creates a new 3D object from triangles (vertices & faces).
 * iso_thread(d,p,h,internal,offset,fn) # usage of thread method with an iso pattern.
 
 #### 3D Boolean operations:
@@ -126,7 +126,7 @@ note: most of these transformations can only work on a single object, as these c
 #### Transformations:
 * mirror(x,y,z)(...) | mirror([x,y,z])(...)  
 * offset(length,fillet,fusion)(...3D)  
-Chamfer and fillet can fail if the length is too big for an edge, so prefer using it on simple object or it can fail and makes your object disapear. Also, in this simple version they only work with one object and one length for all edges.
+Chamfer and fillet can fail if the length is too big for an edge, so prefer using it on simple object or it can fail and makes your object disappear. Also, in this simple version they only work with one object and one length for all edges.
 * chamfer(l)(3D)
 * fillet(l)(3D)
 

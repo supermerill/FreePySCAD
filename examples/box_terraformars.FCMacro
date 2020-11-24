@@ -157,7 +157,7 @@ bolh().move(66.6*0.5,95+60+50+25,0).color("yellow"),
 bolh().move(66.6*1.5,95+60+50+25,0).color("red"),
 bolh().move(66.6*2.5,95+60+50+25,0).color(0.8,0.,0.6),
 
-# draw some box for hexagon thigns
+# draw some box for hexagon things
 hex.move(287-67,95),
 
 
