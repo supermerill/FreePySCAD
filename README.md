@@ -95,6 +95,16 @@ The geometry passed inside the `scene().redraw(...)` function will be added insi
 * Unimplemented: `resize`, `minkowski` and `hull` 
 * `offset(2,True)(thing())` is similar to `minkowski(){thing(); sphere(2);}`
 
+  Exemple to draw text (you can omit the font name ):
+  ```
+	from FreePySCAD.freepyscad import *
+	set_font_dir("C:/Windows/Fonts/")
+	scene().redraw(
+		linear_extrude(1)(
+			text("Hello world!", 5, "arial.ttf")
+		)
+	)
+  ```
 You can see and execute some complex examples in the examples directory
 ## FreePySCAD cheatsheet:
 
@@ -115,7 +125,7 @@ p = pitch = height between the beginning and the ending of a single loop
 * `square(size)`
 * `square([width,height])` | `square(width,height)` | `rectangle([width,height])`
 * `poly_reg(r|d,nb,inscr)`
-* `text(text,size)`
+* `text(text,size,[font])`
 * `gear(nb, mod, angle, external, high_precision)`
 
 
@@ -201,7 +211,6 @@ All python syntax and standard library can be used
 * When a part fails to compile, it creates a sphere of size `_default_size`. you can change the variable `_default_size`, it's used as a default value when `0.0` will create an impossible object.  
 Example: `circle() == circle(_default_size)`
 * **solid_slices** need a double-array of points. Each array of points is a slice. It creates triangles to join one slice to the next. The last point of each slice have to be approximately aligned ( = don't put them 180° apart), because it's used as the first edge. The middle point (mean of all points if not given via the centers argument) is used to choose the next point to draw triangle and for closing the shell at the bottom layer and top layer. The line from the center of a slice to the center of the next one must be inside the slice and the next slice.
-
-## LICENCE
+* **Fonts**: the script doesn't know where they are stored. You must add teh directory(ies) via set_font_dir and add_font_dir, and it will explore these directories to find the font file (default font is arial.ttf). Default location of system font file are "C:/Windows/Fonts/" on windows ; "/System/Library/Fonts/" and "~/Library/Fonts/" on macos ; "/usr/share/fonts/" and "~/.fonts/" on (some) linux.
 
 [GPLv3](LICENCE)

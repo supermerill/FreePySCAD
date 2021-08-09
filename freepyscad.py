@@ -1843,7 +1843,7 @@ def text(text="Hello", size=_default_size, font="arial.ttf",center=None,name=Non
 	if(not os.path.exists(font)):
 		for font_dir in _pyscad_font_dir:
 			if(os.path.exists(font_dir + font)):
-				font = _pyscad_font_dir + font
+				font = font_dir + font
 				break
 	if(not os.path.exists(font)):
 		print("Error, can't find a good path for the font '"+font+"'")
