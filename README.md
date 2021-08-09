@@ -11,7 +11,7 @@ _Note:_ it's in a beta stage right now. You can use it but some functions may ha
 
 ## Requirements
 
-[FreeCAD v0.19](https://github.com/FreeCAD/FreeCAD/releases/tag/0.19_pre) due to the `text()` function, but it may be able to run in older FreeCAD versions if you don't use it.
+[FreeCAD v0.19](https://github.com/FreeCAD/FreeCAD/releases) due to the `text()` function, but it may be able to run in older FreeCAD versions if you don't use it.
 
 ## Installation
 
